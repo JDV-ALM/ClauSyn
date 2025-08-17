@@ -205,14 +205,14 @@
                 <filter string="Confirmadas" name="confirmed" 
                         domain="[('state', '=', 'confirmed')]"/>
                 <filter string="Check-in Hoy" name="checkin_today"
-                        domain="[('checkin_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')),
-                                ('checkin_date', '<=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                        domain="[('checkin_date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                ('checkin_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
                 <filter string="Check-out Hoy" name="checkout_today"
-                        domain="[('checkout_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')),
-                                ('checkout_date', '<=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                        domain="[('checkout_date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                ('checkout_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
                 <separator/>
                 <filter string="Con Saldo" name="with_balance"
-                        domain="[('balance', '>', 0)]"/>
+                        domain="[('balance', '&gt;', 0)]"/>
                 <separator/>
                 <group expand="0" string="Agrupar Por">
                     <filter string="Estado" name="group_state" 

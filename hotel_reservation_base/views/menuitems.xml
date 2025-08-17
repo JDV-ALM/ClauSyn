@@ -27,8 +27,8 @@
         <field name="res_model">hotel.reservation</field>
         <field name="view_mode">tree,kanban,form</field>
         <field name="search_view_id" ref="view_hotel_reservation_search"/>
-        <field name="domain">[('checkin_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')),
-                              ('checkin_date', '<=', context_today().strftime('%Y-%m-%d 23:59:59')),
+        <field name="domain">[('checkin_date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                              ('checkin_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59')),
                               ('state', '=', 'confirmed')]</field>
         <field name="context">{'search_default_confirmed': 1}</field>
         <field name="help" type="html">
@@ -50,8 +50,8 @@
         <field name="res_model">hotel.reservation</field>
         <field name="view_mode">tree,kanban,form</field>
         <field name="search_view_id" ref="view_hotel_reservation_search"/>
-        <field name="domain">[('checkout_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')),
-                              ('checkout_date', '<=', context_today().strftime('%Y-%m-%d 23:59:59')),
+        <field name="domain">[('checkout_date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                              ('checkout_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59')),
                               ('state', '=', 'checked_in')]</field>
         <field name="context">{'search_default_checked_in': 1}</field>
         <field name="help" type="html">
