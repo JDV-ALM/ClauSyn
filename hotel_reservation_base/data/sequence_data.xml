@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Desarrollado por Almus Dev (JDV-ALM) - www.almus.dev -->
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Secuencia para Reservas de Hotel -->
+        <record id="seq_hotel_reservation" model="ir.sequence">
+            <field name="name">Hotel Reservation</field>
+            <field name="code">hotel.reservation</field>
+            <field name="prefix">RESV-%(year)s-</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        
+    </data>
+</odoo>

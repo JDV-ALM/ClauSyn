@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Desarrollado por Almus Dev (JDV-ALM) - www.almus.dev -->
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Categoría de módulo -->
+        <record id="module_category_hotel" model="ir.module.category">
+            <field name="name">Hotel Management</field>
+            <field name="description">Gestión de Hotel</field>
+            <field name="sequence">100</field>
+        </record>
+        
+        <!-- Grupo Usuario de Hotel -->
+        <record id="group_hotel_user" model="res.groups">
+            <field name="name">Usuario de Hotel</field>
+            <field name="category_id" ref="module_category_hotel"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">Usuario con acceso básico a las funciones del hotel</field>
+        </record>
+        
+        <!-- Grupo Gerente de Hotel -->
+        <record id="group_hotel_manager" model="res.groups">
+            <field name="name">Gerente de Hotel</field>
+            <field name="category_id" ref="module_category_hotel"/>
+            <field name="implied_ids" eval="[(4, ref('group_hotel_user'))]"/>
+            <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+            <field name="comment">Acceso completo a todas las funciones del hotel</field>
+        </record>
+        
+    </data>
+</odoo>

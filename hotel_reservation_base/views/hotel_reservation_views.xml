@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Desarrollado por Almus Dev (JDV-ALM) - www.almus.dev -->
+<odoo>
+    
+    <!-- Form View -->
+    <record id="view_hotel_reservation_form" model="ir.ui.view">
+        <field name="name">hotel.reservation.form</field>
+        <field name="model">hotel.reservation</field>
+        <field name="arch" type="xml">
+            <form string="Reserva de Hotel">
+                <header>
+                    <button name="action_confirm" 
+                            string="Confirmar" 
+                            type="object" 
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_checkin" 
+                            string="Check-in" 
+                            type="object" 
+                            class="btn-primary"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_checkout" 
+                            string="Checkout" 
+                            type="object" 
+                            class="btn-warning"
+                            invisible="state != 'checked_in'"/>
+                    <button name="action_done" 
+                            string="Marcar Facturada" 
+                            type="object" 
+                            class="btn-success"
+                            invisible="state != 'checked_out' or balance > 0.01"/>
+                    <button name="action_cancel" 
+                            string="Cancelar" 
+                            type="object" 
+                            class="btn-danger"
+                            invisible="state in ['done', 'cancelled']"/>
+                    <button name="action_register_payment"
+                            string="Registrar Anticipo"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state not in ['confirmed', 'checked_in']"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,checked_in,checked_out,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_pos_orders"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-shopping-cart">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value">
+                                    <field name="pos_order_ids" widget="statinfo"/>
+                                </span>
+                                <span class="o_stat_text">Órdenes POS</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id" 
+                                   readonly="state != 'draft'"
+                                   required="1"/>
+                            <field name="room_number" 
+                                   readonly="state not in ['draft', 'confirmed']"
+                                   required="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="checkin_date" 
+                                   readonly="state != 'draft'"
+                                   required="1"/>
+                            <field name="checkin_real" 
+                                   readonly="1"
+                                   invisible="not checkin_real"/>
+                            <field name="checkout_date" 
+                                   readonly="state != 'draft'"
+                                   required="1"/>
+                            <field name="checkout_real" 
+                                   readonly="1"
+                                   invisible="not checkout_real"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="amount_total" widget="monetary"/>
+                            <field name="amount_paid" widget="monetary"/>
+                        </group>
+                        <group>
+                            <field name="balance" widget="monetary" 
+                                   decoration-danger="balance > 0"
+                                   decoration-success="balance == 0"/>
+                            <field name="sale_order_id" 
+                                   readonly="1"
+                                   invisible="not sale_order_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Consumos POS" name="pos_orders">
+                            <field name="pos_order_ids" readonly="1">
+                                <tree create="false" edit="false" delete="false">
+                                    <field name="name"/>
+                                    <field name="date_order"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount_total" sum="Total"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Cargos Manuales" name="manual_charges">
+                            <field name="line_ids" 
+                                   readonly="state not in ['draft', 'confirmed', 'checked_in']">
+                                <tree editable="bottom">
+                                    <field name="date"/>
+                                    <field name="product_id" optional="show"/>
+                                    <field name="name"/>
+                                    <field name="quantity"/>
+                                    <field name="price_unit"/>
+                                    <field name="tax_ids" widget="many2many_tags" optional="hide"/>
+                                    <field name="price_subtotal" sum="Subtotal"/>
+                                    <field name="price_total" sum="Total"/>
+                                    <field name="user_id" optional="show"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Anticipos" name="payments">
+                            <field name="payment_ids" readonly="1">
+                                <tree create="false" edit="false">
+                                    <field name="payment_date"/>
+                                    <field name="name"/>
+                                    <field name="payment_method_id"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="reference" optional="show"/>
+                                    <field name="account_move_id"/>
+                                    <field name="is_applied"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <button name="action_view_account_move" 
+                                            string="Ver Asiento" 
+                                            type="object" 
+                                            icon="fa-book"
+                                            invisible="not account_move_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notas" name="notes">
+                            <field name="notes" placeholder="Escriba observaciones internas aquí..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Tree View -->
+    <record id="view_hotel_reservation_tree" model="ir.ui.view">
+        <field name="name">hotel.reservation.tree</field>
+        <field name="model">hotel.reservation</field>
+        <field name="arch" type="xml">
+            <tree string="Reservas" decoration-info="state == 'draft'" 
+                  decoration-warning="state == 'confirmed'"
+                  decoration-success="state == 'checked_in'"
+                  decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="room_number"/>
+                <field name="checkin_date"/>
+                <field name="checkout_date"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="balance" sum="Saldo"/>
+                <field name="state" widget="badge" 
+                       decoration-info="state == 'draft'"
+                       decoration-warning="state == 'confirmed'"
+                       decoration-success="state == 'checked_in'"
+                       decoration-danger="state == 'cancelled'"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Search View -->
+    <record id="view_hotel_reservation_search" model="ir.ui.view">
+        <field name="name">hotel.reservation.search</field>
+        <field name="model">hotel.reservation</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Reservas">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="room_number"/>
+                <separator/>
+                <filter string="En Casa" name="checked_in" 
+                        domain="[('state', '=', 'checked_in')]"/>
+                <filter string="Confirmadas" name="confirmed" 
+                        domain="[('state', '=', 'confirmed')]"/>
+                <filter string="Check-in Hoy" name="checkin_today"
+                        domain="[('checkin_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                ('checkin_date', '<=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                <filter string="Check-out Hoy" name="checkout_today"
+                        domain="[('checkout_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                ('checkout_date', '<=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                <separator/>
+                <filter string="Con Saldo" name="with_balance"
+                        domain="[('balance', '>', 0)]"/>
+                <separator/>
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Estado" name="group_state" 
+                            domain="[]" context="{'group_by': 'state'}"/>
+                    <filter string="Cliente" name="group_partner" 
+                            domain="[]" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Habitación" name="group_room" 
+                            domain="[]" context="{'group_by': 'room_number'}"/>
+                    <filter string="Mes Check-in" name="group_checkin_month" 
+                            domain="[]" context="{'group_by': 'checkin_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Kanban View -->
+    <record id="view_hotel_reservation_kanban" model="ir.ui.view">
+        <field name="name">hotel.reservation.kanban</field>
+        <field name="model">hotel.reservation</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" quick_create="false">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="room_number"/>
+                <field name="checkin_date"/>
+                <field name="checkout_date"/>
+                <field name="amount_total"/>
+                <field name="balance"/>
+                <field name="state"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="oe_kanban_details">
+                                <strong class="o_kanban_record_title">
+                                    <field name="name"/>
+                                </strong>
+                                <div class="text-muted o_kanban_record_subtitle">
+                                    <field name="partner_id"/>
+                                </div>
+                                <div>
+                                    <i class="fa fa-bed"/> <field name="room_number"/>
+                                </div>
+                                <div class="text-muted">
+                                    <i class="fa fa-calendar"/> 
+                                    <field name="checkin_date" widget="date"/> - 
+                                    <field name="checkout_date" widget="date"/>
+                                </div>
+                                <div>
+                                    <strong>Total: </strong>
+                                    <field name="amount_total" widget="monetary"/>
+                                </div>
+                                <div t-if="record.balance.raw_value > 0" class="text-danger">
+                                    <strong>Saldo: </strong>
+                                    <field name="balance" widget="monetary"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+    
+    <!-- Action -->
+    <record id="action_hotel_reservation" model="ir.actions.act_window">
+        <field name="name">Reservas</field>
+        <field name="res_model">hotel.reservation</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="search_view_id" ref="view_hotel_reservation_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear primera reserva
+            </p>
+            <p>
+                Gestione las reservas de hotel, registre consumos y controle los pagos.
+            </p>
+        </field>
+    </record>
+    
+</odoo>

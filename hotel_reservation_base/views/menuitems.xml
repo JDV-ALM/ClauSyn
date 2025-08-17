@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Desarrollado por Almus Dev (JDV-ALM) - www.almus.dev -->
+<odoo>
+    
+    <!-- Menú Principal -->
+    <menuitem id="menu_hotel_root" 
+              name="Hotel" 
+              sequence="50"
+              web_icon="hotel_reservation_base,static/description/icon.png"/>
+    
+    <!-- Menú Reservas -->
+    <menuitem id="menu_hotel_reservations" 
+              name="Reservas" 
+              parent="menu_hotel_root" 
+              sequence="10"/>
+    
+    <!-- Submenu: Todas las Reservas -->
+    <menuitem id="menu_hotel_all_reservations" 
+              name="Todas las Reservas" 
+              parent="menu_hotel_reservations"
+              action="action_hotel_reservation"
+              sequence="10"/>
+    
+    <!-- Submenu: Check-in Hoy -->
+    <record id="action_hotel_checkin_today" model="ir.actions.act_window">
+        <field name="name">Check-in Hoy</field>
+        <field name="res_model">hotel.reservation</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="search_view_id" ref="view_hotel_reservation_search"/>
+        <field name="domain">[('checkin_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                              ('checkin_date', '<=', context_today().strftime('%Y-%m-%d 23:59:59')),
+                              ('state', '=', 'confirmed')]</field>
+        <field name="context">{'search_default_confirmed': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay check-ins programados para hoy
+            </p>
+        </field>
+    </record>
+    
+    <menuitem id="menu_hotel_checkin_today" 
+              name="Check-in Hoy" 
+              parent="menu_hotel_reservations"
+              action="action_hotel_checkin_today"
+              sequence="20"/>
+    
+    <!-- Submenu: Check-out Hoy -->
+    <record id="action_hotel_checkout_today" model="ir.actions.act_window">
+        <field name="name">Check-out Hoy</field>
+        <field name="res_model">hotel.reservation</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="search_view_id" ref="view_hotel_reservation_search"/>
+        <field name="domain">[('checkout_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                              ('checkout_date', '<=', context_today().strftime('%Y-%m-%d 23:59:59')),
+                              ('state', '=', 'checked_in')]</field>
+        <field name="context">{'search_default_checked_in': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay check-outs programados para hoy
+            </p>
+        </field>
+    </record>
+    
+    <menuitem id="menu_hotel_checkout_today" 
+              name="Check-out Hoy" 
+              parent="menu_hotel_reservations"
+              action="action_hotel_checkout_today"
+              sequence="30"/>
+    
+    <!-- Submenu: En Casa -->
+    <record id="action_hotel_in_house" model="ir.actions.act_window">
+        <field name="name">En Casa</field>
+        <field name="res_model">hotel.reservation</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="search_view_id" ref="view_hotel_reservation_search"/>
+        <field name="domain">[('state', '=', 'checked_in')]</field>
+        <field name="context">{'search_default_checked_in': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay huéspedes en casa actualmente
+            </p>
+        </field>
+    </record>
+    
+    <menuitem id="menu_hotel_in_house" 
+              name="En Casa" 
+              parent="menu_hotel_reservations"
+              action="action_hotel_in_house"
+              sequence="40"/>
+    
+    <!-- Menú Reportes -->
+    <menuitem id="menu_hotel_reports" 
+              name="Reportes" 
+              parent="menu_hotel_root" 
+              sequence="20"/>
+    
+    <!-- Submenu: Cargos de Reserva -->
+    <menuitem id="menu_hotel_reservation_lines" 
+              name="Cargos de Reserva" 
+              parent="menu_hotel_reports"
+              action="action_hotel_reservation_line"
+              sequence="10"/>
+    
+    <!-- Submenu: Anticipos -->
+    <menuitem id="menu_hotel_reservation_payments" 
+              name="Anticipos" 
+              parent="menu_hotel_reports"
+              action="action_hotel_reservation_payment"
+              sequence="20"/>
+    
+    <!-- Menú Configuración -->
+    <menuitem id="menu_hotel_configuration" 
+              name="Configuración" 
+              parent="menu_hotel_root" 
+              sequence="100"
+              groups="group_hotel_manager"/>
+    
+    <!-- Submenu: Ajustes -->
+    <record id="action_hotel_config_settings" model="ir.actions.act_window">
+        <field name="name">Ajustes</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'hotel_reservation_base'}</field>
+    </record>
+    
+    <menuitem id="menu_hotel_config_settings" 
+              name="Ajustes" 
+              parent="menu_hotel_configuration"
+              action="action_hotel_config_settings"
+              sequence="10"/>
+    
+</odoo>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Desarrollado por Almus Dev (JDV-ALM) - www.almus.dev -->
+<odoo>
+    
+    <!-- Form View del Wizard -->
+    <record id="hotel_payment_wizard_form_view" model="ir.ui.view">
+        <field name="name">hotel.payment.wizard.form</field>
+        <field name="model">hotel.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Registrar Anticipo">
+                <group>
+                    <group>
+                        <field name="reservation_id" invisible="1"/>
+                        <field name="partner_id"/>
+                        <field name="room_number"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="balance"/>
+                    </group>
+                    <group>
+                        <field name="amount" widget="monetary"/>
+                        <field name="payment_method_id"/>
+                        <field name="journal_id"/>
+                        <field name="payment_date"/>
+                    </group>
+                </group>
+                <group>
+                    <field name="reference" placeholder="Ej: Transferencia #12345"/>
+                    <field name="memo"/>
+                </group>
+                <footer>
+                    <button name="action_create_payment" 
+                            string="Registrar Pago" 
+                            type="object" 
+                            class="btn-primary"/>
+                    <button string="Cancelar" 
+                            class="btn-secondary" 
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Action del Wizard -->
+    <record id="action_hotel_payment_wizard" model="ir.actions.act_window">
+        <field name="name">Registrar Anticipo</field>
+        <field name="res_model">hotel.payment.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    
+</odoo>
