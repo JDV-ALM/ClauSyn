@@ -154,11 +154,9 @@ class HotelReservationPayment(models.Model):
                 _('El diario %s no tiene cuenta contable configurada') % self.journal_id.name
             )
         
-        # Cuenta de anticipos de clientes (cuenta puente)
-        credit_account = self.company_id.account_journal_advance_payment_id.default_account_id
-        if not credit_account:
-            # Si no hay cuenta de anticipos configurada, usar cuenta por cobrar del cliente
-            credit_account = self.partner_id.property_account_receivable_id
+        # Cuenta de anticipos de clientes
+        # Usar cuenta por cobrar del cliente o cuenta de ingresos diferidos
+        credit_account = self.partner_id.property_account_receivable_id
         
         if not credit_account:
             raise UserError(_('No se encontró cuenta contable para el anticipo'))

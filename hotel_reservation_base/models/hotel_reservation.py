@@ -85,13 +85,14 @@ class HotelReservation(models.Model):
         copy=False
     )
     
-    pos_order_ids = fields.One2many(
-        'pos.order',
-        'hotel_reservation_id',
-        string='Órdenes POS',
-        copy=False,
-        readonly=True
-    )
+    # Este campo se habilitará cuando se instale pos_hotel_integration
+    # pos_order_ids = fields.One2many(
+    #     'pos.order',
+    #     'hotel_reservation_id',
+    #     string='Órdenes POS',
+    #     copy=False,
+    #     readonly=True
+    # )
     
     sale_order_id = fields.Many2one(
         'sale.order',
@@ -149,16 +150,18 @@ class HotelReservation(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('hotel.reservation') or _('New')
         return super().create(vals_list)
     
-    @api.depends('line_ids.price_total', 'pos_order_ids.amount_total', 'payment_ids.amount')
+    @api.depends('line_ids.price_total', 'payment_ids.amount')
     def _compute_totals(self):
         for reservation in self:
             # Total de cargos manuales
             manual_charges = sum(reservation.line_ids.mapped('price_total'))
             
-            # Total de órdenes POS (solo las paid_later)
-            pos_charges = sum(reservation.pos_order_ids.filtered(
-                lambda o: o.paid_later
-            ).mapped('amount_total'))
+            # Total de órdenes POS se calculará cuando se instale pos_hotel_integration
+            pos_charges = 0
+            # if hasattr(reservation, 'pos_order_ids'):
+            #     pos_charges = sum(reservation.pos_order_ids.filtered(
+            #         lambda o: o.paid_later
+            #     ).mapped('amount_total'))
             
             # Total de anticipos
             total_payments = sum(reservation.payment_ids.mapped('amount'))
@@ -226,23 +229,24 @@ class HotelReservation(models.Model):
                 raise UserError(_('No se puede cancelar una reserva facturada o ya cancelada'))
             
             # Verificar que no tenga movimientos
-            if reservation.pos_order_ids or reservation.payment_ids:
-                raise UserError(_('No se puede cancelar una reserva con consumos o pagos registrados'))
+            if reservation.payment_ids:
+                raise UserError(_('No se puede cancelar una reserva con pagos registrados'))
             
             reservation.state = 'cancelled'
             reservation.message_post(body=_('Reserva cancelada'))
     
-    def action_view_pos_orders(self):
-        """Abre vista de órdenes POS relacionadas"""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Órdenes POS'),
-            'res_model': 'pos.order',
-            'view_mode': 'tree,form',
-            'domain': [('hotel_reservation_id', '=', self.id)],
-            'context': {'default_hotel_reservation_id': self.id}
-        }
+    # def action_view_pos_orders(self):
+    #     """Abre vista de órdenes POS relacionadas"""
+    #     """Se habilitará cuando se instale pos_hotel_integration"""
+    #     self.ensure_one()
+    #     return {
+    #         'type': 'ir.actions.act_window',
+    #         'name': _('Órdenes POS'),
+    #         'res_model': 'pos.order',
+    #         'view_mode': 'tree,form',
+    #         'domain': [('hotel_reservation_id', '=', self.id)],
+    #         'context': {'default_hotel_reservation_id': self.id}
+    #     }
     
     def action_register_payment(self):
         """Abre wizard para registrar anticipo"""
