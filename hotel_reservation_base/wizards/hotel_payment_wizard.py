@@ -33,7 +33,7 @@ class HotelPaymentWizard(models.TransientModel):
         'res.currency',
         string='Moneda',
         required=True,
-        default=lambda self: self.env.company.currency_id
+        default=lambda self: self._get_default_currency()
     )
     
     reservation_currency_id = fields.Many2one(
@@ -42,6 +42,11 @@ class HotelPaymentWizard(models.TransientModel):
         related='reservation_id.currency_id',
         readonly=True
     )
+    
+    def _get_default_currency(self):
+        """Obtiene la moneda por defecto del wizard"""
+        # Primero intentar obtener la moneda de la compañía
+        return self.env.company.currency_id
     
     balance = fields.Monetary(
         string='Saldo Actual',
@@ -126,11 +131,16 @@ class HotelPaymentWizard(models.TransientModel):
                 _('Solo se pueden registrar anticipos en reservas confirmadas o en casa')
             )
         
+        # Asegurar que currency_id esté configurado
+        if not self.currency_id:
+            raise UserError(_('Debe seleccionar una moneda para el pago'))
+        
         # Crear el pago
         payment_vals = {
             'reservation_id': self.reservation_id.id,
             'name': self.memo,
             'amount': self.amount,
+            'currency_id': self.currency_id.id,  # Asegurar que se pase el ID
             'payment_method_id': self.payment_method_id.id,
             'payment_date': self.payment_date,
             'journal_id': self.journal_id.id,

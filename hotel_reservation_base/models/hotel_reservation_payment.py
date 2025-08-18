@@ -152,6 +152,11 @@ class HotelReservationPayment(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         """Override create para validar y crear asiento contable"""
+        # Asegurar que currency_id esté presente
+        for vals in vals_list:
+            if not vals.get('currency_id'):
+                vals['currency_id'] = self.env.company.currency_id.id
+        
         payments = super().create(vals_list)
         for payment in payments:
             # Validar estado de la reserva
@@ -236,7 +241,7 @@ class HotelReservationPayment(models.Model):
                 'partner_id': self.partner_id.id,
                 'debit': self.amount,
                 'credit': 0,
-                 # No necesita currency_id si es la misma moneda
+                'currency_id': False,  # No necesita currency_id si es la misma moneda
             }
             
             credit_line_vals = {
