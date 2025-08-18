@@ -66,6 +66,9 @@
                             <field name="partner_id" 
                                    readonly="state != 'draft'"
                                    required="1"/>
+                            <field name="pricelist_id" 
+                                   readonly="state not in ['draft', 'confirmed']"
+                                   required="1"/>
                             <field name="room_number" 
                                    readonly="state not in ['draft', 'confirmed']"
                                    required="1"/>
@@ -182,6 +185,7 @@
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="room_number"/>
+                <field name="pricelist_id" optional="show"/>
                 <field name="checkin_date"/>
                 <field name="checkout_date"/>
                 <field name="amount_total" sum="Total"/>
@@ -205,6 +209,7 @@
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="room_number"/>
+                <field name="pricelist_id"/>
                 <separator/>
                 <filter string="En Casa" name="checked_in" 
                         domain="[('state', '=', 'checked_in')]"/>

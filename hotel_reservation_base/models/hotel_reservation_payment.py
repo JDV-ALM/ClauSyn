@@ -236,7 +236,7 @@ class HotelReservationPayment(models.Model):
                 'partner_id': self.partner_id.id,
                 'debit': self.amount,
                 'credit': 0,
-                'currency_id': False,  # No necesita currency_id si es la misma moneda
+                 # No necesita currency_id si es la misma moneda
             }
             
             credit_line_vals = {

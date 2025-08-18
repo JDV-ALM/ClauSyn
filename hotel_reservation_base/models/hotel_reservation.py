@@ -29,6 +29,14 @@ class HotelReservation(models.Model):
         help='Cliente de la reserva'
     )
     
+    pricelist_id = fields.Many2one(
+        'product.pricelist',
+        string='Lista de Precios',
+        required=True,
+        tracking=True,
+        help='Lista de precios para esta reserva'
+    )
+    
     room_number = fields.Char(
         string='Habitación',
         required=True,
@@ -151,6 +159,28 @@ class HotelReservation(models.Model):
         """Obtiene la moneda por defecto (USD si existe, sino la de la compañía)"""
         usd = self.env['res.currency'].search([('name', '=', 'USD')], limit=1)
         return usd if usd else self.env.company.currency_id
+    
+    @api.onchange('partner_id')
+    def _onchange_partner_id(self):
+        """Actualiza la lista de precios basada en el cliente"""
+        if self.partner_id:
+            # Si el cliente tiene una lista de precios específica
+            if self.partner_id.property_product_pricelist:
+                self.pricelist_id = self.partner_id.property_product_pricelist
+            else:
+                # Buscar lista de precios por defecto en la moneda de la reserva
+                pricelist = self.env['product.pricelist'].search([
+                    ('currency_id', '=', self.currency_id.id),
+                    ('active', '=', True)
+                ], limit=1)
+                if pricelist:
+                    self.pricelist_id = pricelist
+    
+    @api.onchange('pricelist_id')
+    def _onchange_pricelist_id(self):
+        """Actualiza la moneda basada en la lista de precios"""
+        if self.pricelist_id:
+            self.currency_id = self.pricelist_id.currency_id
     
     @api.model_create_multi
     def create(self, vals_list):

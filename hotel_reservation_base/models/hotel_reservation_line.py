@@ -121,6 +121,13 @@ class HotelReservationLine(models.Model):
         store=True
     )
     
+    pricelist_id = fields.Many2one(
+        related='reservation_id.pricelist_id',
+        string='Lista de Precios',
+        readonly=True,
+        store=True
+    )
+    
     state = fields.Selection(
         related='reservation_id.state',
         string='Estado Reserva',
@@ -182,13 +189,39 @@ class HotelReservationLine(models.Model):
         """Actualiza campos basados en el producto seleccionado"""
         if self.product_id:
             self.name = self.product_id.display_name
-            self.price_unit = self.product_id.lst_price
+            
+            # Obtener precio de la lista de precios si existe
+            if self.pricelist_id:
+                price = self.pricelist_id._get_product_price(
+                    self.product_id,
+                    self.quantity or 1.0,
+                    currency=self.price_currency_id,
+                    date=self.date or fields.Date.today()
+                )
+                self.price_unit = price
+                # La moneda del precio será la de la lista de precios
+                self.price_currency_id = self.pricelist_id.currency_id
+            else:
+                self.price_unit = self.product_id.lst_price
+                self.price_currency_id = self.currency_id
             
             # Obtener impuestos del producto
             taxes = self.product_id.taxes_id.filtered(
                 lambda t: t.company_id == self.company_id
             )
             self.tax_ids = taxes
+    
+    @api.onchange('quantity')
+    def _onchange_quantity(self):
+        """Actualiza el precio cuando cambia la cantidad (puede haber descuentos por volumen)"""
+        if self.product_id and self.pricelist_id:
+            price = self.pricelist_id._get_product_price(
+                self.product_id,
+                self.quantity or 1.0,
+                currency=self.price_currency_id,
+                date=self.date or fields.Date.today()
+            )
+            self.price_unit = price
     
     @api.constrains('quantity')
     def _check_quantity(self):
