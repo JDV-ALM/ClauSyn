@@ -128,7 +128,7 @@ class HotelReservationLine(models.Model):
                     product=line.product_id,
                     partner=line.partner_id
                 )
-                line.price_total = taxes['price_total']
+                line.price_total = taxes['total_included']
             else:
                 line.price_total = line.price_subtotal
     
