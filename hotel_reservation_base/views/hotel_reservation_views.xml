@@ -123,6 +123,8 @@
                                     <field name="name"/>
                                     <field name="quantity"/>
                                     <field name="price_unit"/>
+                                    <field name="price_currency_id" optional="show" groups="base.group_multi_currency"/>
+                                    <field name="currency_rate" optional="hide" readonly="1" groups="base.group_multi_currency"/>
                                     <field name="tax_ids" widget="many2many_tags" optional="hide"/>
                                     <field name="price_subtotal" sum="Subtotal"/>
                                     <field name="price_total" sum="Total"/>

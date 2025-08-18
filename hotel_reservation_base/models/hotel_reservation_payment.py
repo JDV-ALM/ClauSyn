@@ -194,41 +194,59 @@ class HotelReservationPayment(models.Model):
         if not credit_account:
             raise UserError(_('No se encontró cuenta contable para el anticipo'))
         
-        # Crear asiento
+        # Preparar líneas del asiento
         move_lines = []
-        
-        # Línea de débito (cuenta del diario)
-        debit_line_vals = {
-            'name': _('Anticipo - %s') % self.name,
-            'account_id': debit_account.id,
-            'partner_id': self.partner_id.id,
-            'debit': self.amount if self.currency_id == self.company_id.currency_id else 0,
-            'credit': 0,
-            'amount_currency': self.amount if self.currency_id != self.company_id.currency_id else 0,
-            'currency_id': self.currency_id.id if self.currency_id != self.company_id.currency_id else False,
-        }
-        
-        # Línea de crédito (cuenta por cobrar)
-        credit_line_vals = {
-            'name': _('Anticipo - %s') % self.name,
-            'account_id': credit_account.id,
-            'partner_id': self.partner_id.id,
-            'debit': 0,
-            'credit': self.amount if self.currency_id == self.company_id.currency_id else 0,
-            'amount_currency': -self.amount if self.currency_id != self.company_id.currency_id else 0,
-            'currency_id': self.currency_id.id if self.currency_id != self.company_id.currency_id else False,
-        }
         
         # Si la moneda del pago es diferente a la moneda de la compañía
         if self.currency_id != self.company_id.currency_id:
+            # Monto en moneda de la compañía
             amount_company_currency = self.currency_id._convert(
                 self.amount,
                 self.company_id.currency_id,
                 self.company_id,
                 self.payment_date or fields.Date.today()
             )
-            debit_line_vals['debit'] = amount_company_currency
-            credit_line_vals['credit'] = amount_company_currency
+            
+            # Línea de débito (cuenta del diario)
+            debit_line_vals = {
+                'name': _('Anticipo - %s') % self.name,
+                'account_id': debit_account.id,
+                'partner_id': self.partner_id.id,
+                'debit': amount_company_currency,
+                'credit': 0,
+                'amount_currency': self.amount,
+                'currency_id': self.currency_id.id,
+            }
+            
+            # Línea de crédito (cuenta por cobrar)
+            credit_line_vals = {
+                'name': _('Anticipo - %s') % self.name,
+                'account_id': credit_account.id,
+                'partner_id': self.partner_id.id,
+                'debit': 0,
+                'credit': amount_company_currency,
+                'amount_currency': -self.amount,
+                'currency_id': self.currency_id.id,
+            }
+        else:
+            # Si es la misma moneda que la compañía
+            debit_line_vals = {
+                'name': _('Anticipo - %s') % self.name,
+                'account_id': debit_account.id,
+                'partner_id': self.partner_id.id,
+                'debit': self.amount,
+                'credit': 0,
+                'currency_id': False,  # No necesita currency_id si es la misma moneda
+            }
+            
+            credit_line_vals = {
+                'name': _('Anticipo - %s') % self.name,
+                'account_id': credit_account.id,
+                'partner_id': self.partner_id.id,
+                'debit': 0,
+                'credit': self.amount,
+                'currency_id': False,  # No necesita currency_id si es la misma moneda
+            }
         
         move_vals = {
             'journal_id': self.journal_id.id,
@@ -238,7 +256,6 @@ class HotelReservationPayment(models.Model):
                 self.room_number
             ),
             'company_id': self.company_id.id,
-            'currency_id': self.currency_id.id if self.currency_id != self.company_id.currency_id else self.company_id.currency_id.id,
             'partner_id': self.partner_id.id,
             'line_ids': [(0, 0, debit_line_vals), (0, 0, credit_line_vals)]
         }

@@ -28,6 +28,8 @@
                         <group>
                             <field name="quantity"/>
                             <field name="price_unit" widget="monetary"/>
+                            <field name="price_currency_id" groups="base.group_multi_currency"/>
+                            <field name="currency_rate" readonly="1" groups="base.group_multi_currency"/>
                         </group>
                         <group>
                             <field name="tax_ids" widget="many2many_tags"/>

@@ -107,7 +107,8 @@ class HotelReservation(models.Model):
         'res.currency',
         string='Moneda',
         required=True,
-        default=lambda self: self.env.company.currency_id
+        default=lambda self: self._get_default_currency(),
+        help='Moneda base de la reserva (típicamente USD)'
     )
     
     company_id = fields.Many2one(
@@ -121,27 +122,35 @@ class HotelReservation(models.Model):
         string='Total Consumos',
         compute='_compute_totals',
         store=True,
-        currency_field='currency_id'
+        currency_field='currency_id',
+        help='Total de consumos en la moneda de la reserva'
     )
     
     amount_paid = fields.Monetary(
         string='Total Anticipos',
         compute='_compute_totals',
         store=True,
-        currency_field='currency_id'
+        currency_field='currency_id',
+        help='Total de anticipos convertidos a la moneda de la reserva'
     )
     
     balance = fields.Monetary(
         string='Saldo Pendiente',
         compute='_compute_totals',
         store=True,
-        currency_field='currency_id'
+        currency_field='currency_id',
+        help='Saldo pendiente en la moneda de la reserva'
     )
     
     notes = fields.Text(
         string='Notas',
         help='Observaciones internas'
     )
+    
+    def _get_default_currency(self):
+        """Obtiene la moneda por defecto (USD si existe, sino la de la compañía)"""
+        usd = self.env['res.currency'].search([('name', '=', 'USD')], limit=1)
+        return usd if usd else self.env.company.currency_id
     
     @api.model_create_multi
     def create(self, vals_list):
