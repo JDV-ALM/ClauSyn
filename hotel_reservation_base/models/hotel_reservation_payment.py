@@ -74,10 +74,25 @@ class HotelReservationPayment(models.Model):
         help='Indica si el pago ya fue aplicado al checkout'
     )
     
-    # Campos relacionados
+    # Campo de moneda independiente para permitir pagos en distintas monedas
     currency_id = fields.Many2one(
-        related='reservation_id.currency_id',
+        'res.currency',
         string='Moneda',
+        required=True,
+        default=lambda self: self.env.company.currency_id
+    )
+    
+    # Monto en moneda de la reserva (para cálculos)
+    amount_reservation_currency = fields.Monetary(
+        string='Monto en Moneda Reserva',
+        compute='_compute_amount_reservation_currency',
+        store=True,
+        currency_field='reservation_currency_id'
+    )
+    
+    reservation_currency_id = fields.Many2one(
+        related='reservation_id.currency_id',
+        string='Moneda Reserva',
         readonly=True,
         store=True
     )
@@ -109,6 +124,24 @@ class HotelReservationPayment(models.Model):
         readonly=True,
         store=True
     )
+    
+    @api.depends('amount', 'currency_id', 'reservation_currency_id', 'payment_date')
+    def _compute_amount_reservation_currency(self):
+        """Convierte el monto del pago a la moneda de la reserva"""
+        for payment in self:
+            if payment.currency_id and payment.reservation_currency_id:
+                if payment.currency_id == payment.reservation_currency_id:
+                    payment.amount_reservation_currency = payment.amount
+                else:
+                    # Convertir a la moneda de la reserva
+                    payment.amount_reservation_currency = payment.currency_id._convert(
+                        payment.amount,
+                        payment.reservation_currency_id,
+                        payment.company_id,
+                        payment.payment_date or fields.Date.today()
+                    )
+            else:
+                payment.amount_reservation_currency = payment.amount
     
     @api.constrains('amount')
     def _check_amount(self):
@@ -162,6 +195,41 @@ class HotelReservationPayment(models.Model):
             raise UserError(_('No se encontró cuenta contable para el anticipo'))
         
         # Crear asiento
+        move_lines = []
+        
+        # Línea de débito (cuenta del diario)
+        debit_line_vals = {
+            'name': _('Anticipo - %s') % self.name,
+            'account_id': debit_account.id,
+            'partner_id': self.partner_id.id,
+            'debit': self.amount if self.currency_id == self.company_id.currency_id else 0,
+            'credit': 0,
+            'amount_currency': self.amount if self.currency_id != self.company_id.currency_id else 0,
+            'currency_id': self.currency_id.id if self.currency_id != self.company_id.currency_id else False,
+        }
+        
+        # Línea de crédito (cuenta por cobrar)
+        credit_line_vals = {
+            'name': _('Anticipo - %s') % self.name,
+            'account_id': credit_account.id,
+            'partner_id': self.partner_id.id,
+            'debit': 0,
+            'credit': self.amount if self.currency_id == self.company_id.currency_id else 0,
+            'amount_currency': -self.amount if self.currency_id != self.company_id.currency_id else 0,
+            'currency_id': self.currency_id.id if self.currency_id != self.company_id.currency_id else False,
+        }
+        
+        # Si la moneda del pago es diferente a la moneda de la compañía
+        if self.currency_id != self.company_id.currency_id:
+            amount_company_currency = self.currency_id._convert(
+                self.amount,
+                self.company_id.currency_id,
+                self.company_id,
+                self.payment_date or fields.Date.today()
+            )
+            debit_line_vals['debit'] = amount_company_currency
+            credit_line_vals['credit'] = amount_company_currency
+        
         move_vals = {
             'journal_id': self.journal_id.id,
             'date': self.payment_date.date() if self.payment_date else fields.Date.today(),
@@ -170,26 +238,9 @@ class HotelReservationPayment(models.Model):
                 self.room_number
             ),
             'company_id': self.company_id.id,
-            'currency_id': self.currency_id.id,
+            'currency_id': self.currency_id.id if self.currency_id != self.company_id.currency_id else self.company_id.currency_id.id,
             'partner_id': self.partner_id.id,
-            'line_ids': [
-                (0, 0, {
-                    'name': _('Anticipo - %s') % self.name,
-                    'account_id': debit_account.id,
-                    'debit': self.amount,
-                    'credit': 0.0,
-                    'partner_id': self.partner_id.id,
-                    'currency_id': self.currency_id.id,
-                }),
-                (0, 0, {
-                    'name': _('Anticipo - %s') % self.name,
-                    'account_id': credit_account.id,
-                    'debit': 0.0,
-                    'credit': self.amount,
-                    'partner_id': self.partner_id.id,
-                    'currency_id': self.currency_id.id,
-                })
-            ]
+            'line_ids': [(0, 0, debit_line_vals), (0, 0, credit_line_vals)]
         }
         
         move = self.env['account.move'].create(move_vals)

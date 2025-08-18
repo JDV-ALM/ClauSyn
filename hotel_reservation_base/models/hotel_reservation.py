@@ -150,7 +150,7 @@ class HotelReservation(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('hotel.reservation') or _('New')
         return super().create(vals_list)
     
-    @api.depends('line_ids.price_total', 'payment_ids.amount')
+    @api.depends('line_ids.price_total', 'payment_ids.amount_reservation_currency')
     def _compute_totals(self):
         for reservation in self:
             # Total de cargos manuales
@@ -163,8 +163,8 @@ class HotelReservation(models.Model):
             #         lambda o: o.paid_later
             #     ).mapped('amount_total'))
             
-            # Total de anticipos
-            total_payments = sum(reservation.payment_ids.mapped('amount'))
+            # Total de anticipos (convertidos a la moneda de la reserva)
+            total_payments = sum(reservation.payment_ids.mapped('amount_reservation_currency'))
             
             reservation.amount_total = manual_charges + pos_charges
             reservation.amount_paid = total_payments

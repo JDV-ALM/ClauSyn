@@ -32,6 +32,13 @@ class HotelPaymentWizard(models.TransientModel):
     currency_id = fields.Many2one(
         'res.currency',
         string='Moneda',
+        required=True,
+        default=lambda self: self.env.company.currency_id
+    )
+    
+    reservation_currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda Reserva',
         related='reservation_id.currency_id',
         readonly=True
     )

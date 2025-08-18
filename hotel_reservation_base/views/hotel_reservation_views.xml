@@ -138,10 +138,14 @@
                                     <field name="name"/>
                                     <field name="payment_method_id"/>
                                     <field name="amount" sum="Total"/>
+                                    <field name="currency_id"/>
+                                    <field name="amount_reservation_currency" 
+                                           sum="Total en Moneda Reserva"
+                                           optional="show"/>
                                     <field name="reference" optional="show"/>
                                     <field name="account_move_id"/>
                                     <field name="is_applied"/>
-                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="reservation_currency_id" column_invisible="1"/>
                                     <button name="action_view_account_move" 
                                             string="Ver Asiento" 
                                             type="object" 
