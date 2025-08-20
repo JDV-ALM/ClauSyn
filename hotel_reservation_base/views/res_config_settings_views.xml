@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Desarrollado por Almus Dev (JDV-ALM) - www.almus.dev -->
+<odoo>
+    
+    <!-- Heredar vista de configuración general -->
+    <record id="res_config_settings_view_form_inherit_hotel" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.hotel</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="30"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Hotel" string="Hotel" name="hotel_reservation_base">
+                    <block title="Configuración Contable" name="hotel_accounting_setting">
+                        <setting id="hotel_advance_account" string="Cuenta de Anticipos" help="Configure la cuenta contable donde se registrarán los anticipos de reservas">
+                            <div class="text-muted">
+                                Define la cuenta de pasivo para registrar los anticipos recibidos de clientes antes de generar la factura
+                            </div>
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <field name="hotel_advance_account_id" 
+                                           options="{'no_create': True, 'no_open': True}"
+                                           required="1"
+                                           domain="[('account_type', 'in', ['liability_current', 'liability_non_current']), ('deprecated', '=', False), ('company_id', '=', company_id)]"/>
+                                </div>
+                                <div class="text-muted" attrs="{'invisible': [('hotel_advance_account_id', '=', False)]}">
+                                    <i class="fa fa-info-circle"/> Los anticipos se registrarán en esta cuenta hasta que se genere la factura y se concilie el pago
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Action para abrir configuración -->
+    <record id="action_hotel_config_settings" model="ir.actions.act_window">
+        <field name="name">Configuración</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'hotel_reservation_base'}</field>
+    </record>
+    
+    <!-- Menu item de configuración -->
+    <menuitem id="menu_hotel_config"
+              name="Configuración"
+              parent="menu_hotel_root"
+              sequence="99"/>
+    
+    <menuitem id="menu_hotel_config_settings"
+              name="Ajustes"
+              parent="menu_hotel_config"
+              action="action_hotel_config_settings"
+              sequence="1"/>
+    
+</odoo>

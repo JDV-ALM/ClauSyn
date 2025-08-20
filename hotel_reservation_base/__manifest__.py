@@ -40,6 +40,7 @@
         'views/hotel_reservation_views.xml',
         'views/hotel_reservation_line_views.xml', 
         'views/hotel_reservation_payment_views.xml',
+        'views/res_config_settings_views.xml',
         'views/menuitems.xml',
         
         # Wizards

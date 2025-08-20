@@ -141,22 +141,20 @@ class HotelReservationPayment(models.Model):
         if self.account_payment_id:
             raise UserError(_('Este anticipo ya tiene un pago contable asociado'))
         
-        # Determinar tipo de pago y cuenta destino
+        # Validar que la cuenta de anticipos esté configurada
+        if not self.company_id.hotel_advance_account_id:
+            raise UserError(_(
+                'No se ha configurado la cuenta de anticipos de hotel. '
+                'Por favor vaya a Configuración > Hotel y configure la cuenta de anticipos.'
+            ))
+        
+        # Determinar tipo de pago
         payment_type = 'inbound'  # Recibimos dinero del cliente
         partner_type = 'customer'
         
-        # Obtener la cuenta de destino (cuenta por cobrar del cliente)
-        if self.partner_id:
-            destination_account = self.partner_id.with_company(self.company_id).property_account_receivable_id
-        else:
-            destination_account = self.env['account.account'].search([
-                ('company_id', '=', self.company_id.id),
-                ('account_type', '=', 'asset_receivable'),
-                ('deprecated', '=', False),
-            ], limit=1)
-        
-        if not destination_account:
-            raise UserError(_('No se encontró cuenta por cobrar para el cliente'))
+        # Para anticipos, usamos la cuenta de anticipos configurada
+        # El override en account.payment se encargará de usar esta cuenta
+        destination_account = self.company_id.hotel_advance_account_id
         
         # Buscar método de pago en account.payment.method
         payment_method = self.env['account.payment.method'].search([
@@ -196,6 +194,9 @@ class HotelReservationPayment(models.Model):
                 self.room_number
             ),
             'payment_reference': self.reference or '',
+            # Campos específicos para anticipos de hotel
+            'is_hotel_advance': True,
+            'hotel_reservation_payment_id': self.id,
         }
         
         # Crear el payment
