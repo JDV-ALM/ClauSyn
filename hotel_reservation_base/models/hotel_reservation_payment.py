@@ -109,6 +109,41 @@ class HotelReservationPayment(models.Model):
         store=True
     )
     
+    # Campo para compatibilidad con compute de totales en reservation
+    amount_reservation_currency = fields.Monetary(
+        string='Monto en Moneda de Reserva',
+        compute='_compute_amount_reservation_currency',
+        currency_field='reservation_currency_id',
+        store=True,
+        help='Monto del anticipo convertido a la moneda de la reserva'
+    )
+    
+    reservation_currency_id = fields.Many2one(
+        'res.currency',
+        related='reservation_id.currency_id',
+        string='Moneda de Reserva',
+        store=True,
+        readonly=True
+    )
+    
+    @api.depends('amount', 'currency_id', 'reservation_currency_id', 'payment_date')
+    def _compute_amount_reservation_currency(self):
+        """Calcula el monto en la moneda de la reserva"""
+        for payment in self:
+            if payment.currency_id and payment.reservation_currency_id:
+                if payment.currency_id == payment.reservation_currency_id:
+                    payment.amount_reservation_currency = payment.amount
+                else:
+                    # Convertir a la moneda de la reserva
+                    payment.amount_reservation_currency = payment.currency_id._convert(
+                        payment.amount,
+                        payment.reservation_currency_id,
+                        payment.company_id,
+                        payment.payment_date or fields.Date.today()
+                    )
+            else:
+                payment.amount_reservation_currency = payment.amount
+    
     @api.constrains('amount')
     def _check_amount(self):
         for payment in self:

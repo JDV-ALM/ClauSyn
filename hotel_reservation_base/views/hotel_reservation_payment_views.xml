@@ -12,8 +12,13 @@
                 <field name="name"/>
                 <field name="partner_id" optional="show"/>
                 <field name="room_number" optional="show"/>
-                <field name="amount" sum="Total Anticipos"/>
-                <field name="currency_id" groups="base.group_multi_currency"/>
+                <field name="amount" widget="monetary" sum="Total Anticipos"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="amount_reservation_currency" widget="monetary" 
+                       string="Monto (Moneda Reserva)" 
+                       sum="Total en Moneda Reserva"
+                       optional="show"/>
+                <field name="reservation_currency_id" column_invisible="1"/>
                 <field name="payment_method_id"/>
                 <field name="journal_id" optional="hide"/>
                 <field name="reference" optional="show"/>
@@ -67,6 +72,12 @@
                         <group>
                             <field name="amount" widget="monetary" readonly="1"/>
                             <field name="currency_id" readonly="1" groups="base.group_multi_currency"/>
+                            <field name="amount_reservation_currency" 
+                                   widget="monetary" 
+                                   readonly="1"
+                                   attrs="{'invisible': [('currency_id', '=', reservation_currency_id)]}"
+                                   string="Monto en Moneda de Reserva"/>
+                            <field name="reservation_currency_id" invisible="1"/>
                             <field name="payment_date" readonly="1"/>
                             <field name="payment_method_id" readonly="1"/>
                         </group>
