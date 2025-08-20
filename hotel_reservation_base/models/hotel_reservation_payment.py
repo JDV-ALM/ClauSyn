@@ -34,6 +34,13 @@ class HotelReservationPayment(models.Model):
         tracking=True
     )
     
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda',
+        required=True,
+        default=lambda self: self.env.company.currency_id
+    )
+    
     payment_method_id = fields.Many2one(
         'pos.payment.method',
         string='Método de Pago',
@@ -55,11 +62,12 @@ class HotelReservationPayment(models.Model):
         domain=[('type', 'in', ['bank', 'cash'])]
     )
     
-    account_move_id = fields.Many2one(
-        'account.move',
-        string='Asiento Contable',
+    account_payment_id = fields.Many2one(
+        'account.payment',
+        string='Pago Contable',
         readonly=True,
-        copy=False
+        copy=False,
+        ondelete='restrict'
     )
     
     reference = fields.Char(
@@ -71,102 +79,50 @@ class HotelReservationPayment(models.Model):
         string='Aplicado',
         default=False,
         readonly=True,
-        help='Indica si el pago ya fue aplicado al checkout'
-    )
-    
-    # Campo de moneda independiente para permitir pagos en distintas monedas
-    currency_id = fields.Many2one(
-        'res.currency',
-        string='Moneda',
-        required=True,
-        default=lambda self: self.env.company.currency_id
-    )
-    
-    # Monto en moneda de la reserva (para cálculos)
-    amount_reservation_currency = fields.Monetary(
-        string='Monto en Moneda Reserva',
-        compute='_compute_amount_reservation_currency',
-        store=True,
-        currency_field='reservation_currency_id'
-    )
-    
-    reservation_currency_id = fields.Many2one(
-        related='reservation_id.currency_id',
-        string='Moneda Reserva',
-        readonly=True,
-        store=True
+        help='Indica si el anticipo ya fue aplicado al checkout'
     )
     
     company_id = fields.Many2one(
-        related='reservation_id.company_id',
+        'res.company',
         string='Compañía',
-        readonly=True,
-        store=True
+        required=True,
+        default=lambda self: self.env.company
     )
     
     partner_id = fields.Many2one(
         related='reservation_id.partner_id',
         string='Cliente',
-        readonly=True,
-        store=True
-    )
-    
-    state = fields.Selection(
-        related='reservation_id.state',
-        string='Estado Reserva',
-        readonly=True,
-        store=True
+        store=True,
+        readonly=True
     )
     
     room_number = fields.Char(
         related='reservation_id.room_number',
         string='Habitación',
-        readonly=True,
-        store=True
+        store=True,
+        readonly=True
     )
     
-    @api.depends('amount', 'currency_id', 'reservation_currency_id', 'payment_date')
-    def _compute_amount_reservation_currency(self):
-        """Convierte el monto del pago a la moneda de la reserva"""
-        for payment in self:
-            if payment.currency_id and payment.reservation_currency_id:
-                if payment.currency_id == payment.reservation_currency_id:
-                    payment.amount_reservation_currency = payment.amount
-                else:
-                    # Convertir a la moneda de la reserva
-                    payment.amount_reservation_currency = payment.currency_id._convert(
-                        payment.amount,
-                        payment.reservation_currency_id,
-                        payment.company_id,
-                        payment.payment_date or fields.Date.today()
-                    )
-            else:
-                payment.amount_reservation_currency = payment.amount
+    state = fields.Selection(
+        related='reservation_id.state',
+        string='Estado Reserva',
+        store=True
+    )
     
     @api.constrains('amount')
     def _check_amount(self):
         for payment in self:
             if payment.amount <= 0:
-                raise ValidationError(_('El monto del pago debe ser mayor a cero'))
+                raise ValidationError(_('El monto del anticipo debe ser mayor a cero'))
     
     @api.model_create_multi
     def create(self, vals_list):
-        """Override create para validar y crear asiento contable"""
-        # Asegurar que currency_id esté presente
-        for vals in vals_list:
-            if not vals.get('currency_id'):
-                vals['currency_id'] = self.env.company.currency_id.id
-        
+        """Override create para crear automáticamente el account.payment"""
         payments = super().create(vals_list)
+        
         for payment in payments:
-            # Validar estado de la reserva
-            if payment.reservation_id.state not in ['confirmed', 'checked_in']:
-                raise ValidationError(
-                    _('Solo se pueden registrar anticipos en reservas confirmadas o en casa')
-                )
-            
-            # Crear asiento contable
-            payment.create_account_move()
+            # Crear el account.payment automáticamente
+            payment.create_account_payment()
             
             # Notificar
             payment.reservation_id.message_post(
@@ -178,117 +134,99 @@ class HotelReservationPayment(models.Model):
         
         return payments
     
-    def create_account_move(self):
-        """Crea el asiento contable del anticipo"""
+    def create_account_payment(self):
+        """Crea el account.payment del anticipo"""
         self.ensure_one()
         
-        if self.account_move_id:
-            raise UserError(_('Este pago ya tiene un asiento contable'))
+        if self.account_payment_id:
+            raise UserError(_('Este anticipo ya tiene un pago contable asociado'))
         
-        # Obtener cuentas
-        debit_account = self.journal_id.default_account_id
-        if not debit_account:
-            raise UserError(
-                _('El diario %s no tiene cuenta contable configurada') % self.journal_id.name
-            )
+        # Determinar tipo de pago y cuenta destino
+        payment_type = 'inbound'  # Recibimos dinero del cliente
+        partner_type = 'customer'
         
-        # Cuenta de anticipos de clientes
-        # Usar cuenta por cobrar del cliente o cuenta de ingresos diferidos
-        credit_account = self.partner_id.property_account_receivable_id
-        
-        if not credit_account:
-            raise UserError(_('No se encontró cuenta contable para el anticipo'))
-        
-        # Preparar líneas del asiento
-        move_lines = []
-        
-        # Si la moneda del pago es diferente a la moneda de la compañía
-        if self.currency_id != self.company_id.currency_id:
-            # Monto en moneda de la compañía
-            amount_company_currency = self.currency_id._convert(
-                self.amount,
-                self.company_id.currency_id,
-                self.company_id,
-                self.payment_date or fields.Date.today()
-            )
-            
-            # Línea de débito (cuenta del diario)
-            debit_line_vals = {
-                'name': _('Anticipo - %s') % self.name,
-                'account_id': debit_account.id,
-                'partner_id': self.partner_id.id,
-                'debit': amount_company_currency,
-                'credit': 0,
-                'amount_currency': self.amount,
-                'currency_id': self.currency_id.id,
-            }
-            
-            # Línea de crédito (cuenta por cobrar)
-            credit_line_vals = {
-                'name': _('Anticipo - %s') % self.name,
-                'account_id': credit_account.id,
-                'partner_id': self.partner_id.id,
-                'debit': 0,
-                'credit': amount_company_currency,
-                'amount_currency': -self.amount,
-                'currency_id': self.currency_id.id,
-            }
+        # Obtener la cuenta de destino (cuenta por cobrar del cliente)
+        if self.partner_id:
+            destination_account = self.partner_id.with_company(self.company_id).property_account_receivable_id
         else:
-            # Si es la misma moneda que la compañía
-            debit_line_vals = {
-                'name': _('Anticipo - %s') % self.name,
-                'account_id': debit_account.id,
-                'partner_id': self.partner_id.id,
-                'debit': self.amount,
-                'credit': 0,
-                'currency_id': False,  # No necesita currency_id si es la misma moneda
-            }
-            
-            credit_line_vals = {
-                'name': _('Anticipo - %s') % self.name,
-                'account_id': credit_account.id,
-                'partner_id': self.partner_id.id,
-                'debit': 0,
-                'credit': self.amount,
-                'currency_id': False,  # No necesita currency_id si es la misma moneda
-            }
+            destination_account = self.env['account.account'].search([
+                ('company_id', '=', self.company_id.id),
+                ('account_type', '=', 'asset_receivable'),
+                ('deprecated', '=', False),
+            ], limit=1)
         
-        move_vals = {
-            'journal_id': self.journal_id.id,
+        if not destination_account:
+            raise UserError(_('No se encontró cuenta por cobrar para el cliente'))
+        
+        # Buscar método de pago en account.payment.method
+        payment_method = self.env['account.payment.method'].search([
+            ('payment_type', '=', payment_type),
+            ('code', '=', 'manual'),  # Método manual por defecto
+        ], limit=1)
+        
+        if not payment_method:
+            raise UserError(_('No se encontró método de pago manual'))
+        
+        # Buscar o crear la línea del método de pago
+        payment_method_line = self.env['account.payment.method.line'].search([
+            ('payment_method_id', '=', payment_method.id),
+            ('journal_id', '=', self.journal_id.id),
+        ], limit=1)
+        
+        if not payment_method_line:
+            # Crear la línea del método de pago si no existe
+            payment_method_line = self.env['account.payment.method.line'].create({
+                'payment_method_id': payment_method.id,
+                'journal_id': self.journal_id.id,
+            })
+        
+        # Preparar valores del payment
+        payment_vals = {
+            'payment_type': payment_type,
+            'partner_type': partner_type,
+            'partner_id': self.partner_id.id,
+            'amount': self.amount,
+            'currency_id': self.currency_id.id,
             'date': self.payment_date.date() if self.payment_date else fields.Date.today(),
-            'ref': _('Anticipo Reserva %s - Hab. %s') % (
+            'journal_id': self.journal_id.id,
+            'payment_method_line_id': payment_method_line.id,
+            'destination_account_id': destination_account.id,
+            'ref': _('Anticipo - Reserva %s - Hab. %s') % (
                 self.reservation_id.name,
                 self.room_number
             ),
-            'company_id': self.company_id.id,
-            'partner_id': self.partner_id.id,
-            'line_ids': [(0, 0, debit_line_vals), (0, 0, credit_line_vals)]
+            'payment_reference': self.reference or '',
         }
         
-        move = self.env['account.move'].create(move_vals)
-        move.action_post()
+        # Crear el payment
+        account_payment = self.env['account.payment'].create(payment_vals)
         
-        self.account_move_id = move
+        # Publicar el payment (esto crea el asiento contable)
+        # El payment queda publicado pero NO conciliado
+        account_payment.action_post()
         
-        return move
+        # Vincular el payment con este anticipo
+        self.account_payment_id = account_payment
+        
+        return account_payment
     
-    def action_view_account_move(self):
-        """Abre el asiento contable relacionado"""
+    def action_view_account_payment(self):
+        """Abre el account.payment relacionado"""
         self.ensure_one()
-        if not self.account_move_id:
-            raise UserError(_('Este pago no tiene asiento contable'))
+        if not self.account_payment_id:
+            raise UserError(_('Este anticipo no tiene pago contable'))
         
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Asiento Contable'),
-            'res_model': 'account.move',
-            'res_id': self.account_move_id.id,
+            'name': _('Pago Contable'),
+            'res_model': 'account.payment',
+            'res_id': self.account_payment_id.id,
             'view_mode': 'form',
             'target': 'current'
         }
     
     def unlink(self):
-        """Override unlink para validar y revertir asiento"""
+        """Override unlink para validar y cancelar payment"""
         for payment in self:
             if payment.is_applied:
                 raise UserError(_('No se puede eliminar un anticipo ya aplicado'))
@@ -299,11 +237,16 @@ class HotelReservationPayment(models.Model):
                     payment.reservation_id.state
                 )
             
-            # Revertir asiento contable si existe
-            if payment.account_move_id:
-                if payment.account_move_id.state == 'posted':
-                    payment.account_move_id.button_cancel()
-                payment.account_move_id.unlink()
+            # Cancelar y eliminar el account.payment si existe
+            if payment.account_payment_id:
+                # Si el payment está publicado, primero lo cancelamos
+                if payment.account_payment_id.state == 'posted':
+                    payment.account_payment_id.action_cancel()
+                # Si el payment está conciliado, no permitir eliminar
+                if payment.account_payment_id.is_reconciled:
+                    raise UserError(_('No se puede eliminar un anticipo con pago conciliado'))
+                # Eliminar el payment
+                payment.account_payment_id.unlink()
         
         return super().unlink()
     
@@ -329,3 +272,21 @@ class HotelReservationPayment(models.Model):
                 
                 if journal:
                     self.journal_id = journal
+    
+    def action_apply_to_checkout(self):
+        """Marca el anticipo como aplicado (será usado en el checkout)"""
+        self.ensure_one()
+        if self.is_applied:
+            raise UserError(_('Este anticipo ya está aplicado'))
+        
+        self.is_applied = True
+        
+        # Mensaje en el chatter
+        self.reservation_id.message_post(
+            body=_('Anticipo aplicado al checkout: %s %s') % (
+                self.amount,
+                self.currency_id.symbol
+            )
+        )
+        
+        return True

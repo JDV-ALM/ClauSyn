@@ -52,7 +52,7 @@ class HotelPaymentWizard(models.TransientModel):
         string='Saldo Actual',
         related='reservation_id.balance',
         readonly=True,
-        currency_field='currency_id'
+        currency_field='reservation_currency_id'
     )
     
     amount = fields.Monetary(
@@ -122,7 +122,7 @@ class HotelPaymentWizard(models.TransientModel):
                     self.journal_id = journal
     
     def action_create_payment(self):
-        """Crea el registro de pago"""
+        """Crea el registro de pago con account.payment"""
         self.ensure_one()
         
         # Validar estado de la reserva
@@ -135,32 +135,43 @@ class HotelPaymentWizard(models.TransientModel):
         if not self.currency_id:
             raise UserError(_('Debe seleccionar una moneda para el pago'))
         
-        # Crear el pago
+        # Crear el anticipo en hotel.reservation.payment
+        # Este modelo creará automáticamente el account.payment
         payment_vals = {
             'reservation_id': self.reservation_id.id,
             'name': self.memo,
             'amount': self.amount,
-            'currency_id': self.currency_id.id,  # Asegurar que se pase el ID
+            'currency_id': self.currency_id.id,
             'payment_method_id': self.payment_method_id.id,
             'payment_date': self.payment_date,
             'journal_id': self.journal_id.id,
             'reference': self.reference,
         }
         
+        # Crear el pago - esto automáticamente creará el account.payment
         payment = self.env['hotel.reservation.payment'].create(payment_vals)
         
-        # Mensaje de confirmación
-        message = _('Anticipo registrado exitosamente: %s %s') % (
-            self.amount,
-            self.currency_id.symbol
-        )
+        # Mensaje de confirmación con información del payment creado
+        if payment.account_payment_id:
+            message = _('Anticipo registrado exitosamente: %s %s\nPago contable #%s creado y publicado') % (
+                self.amount,
+                self.currency_id.symbol,
+                payment.account_payment_id.name
+            )
+        else:
+            message = _('Anticipo registrado exitosamente: %s %s') % (
+                self.amount,
+                self.currency_id.symbol
+            )
         
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'type': 'success',
+                'title': _('Anticipo Registrado'),
                 'message': message,
+                'sticky': False,
                 'next': {
                     'type': 'ir.actions.act_window_close'
                 },
