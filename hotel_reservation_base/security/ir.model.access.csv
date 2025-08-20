@@ -1,9 +1,8 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_hotel_reservation_user,hotel.reservation.user,model_hotel_reservation,group_hotel_user,1,1,1,0
-access_hotel_reservation_manager,hotel.reservation.manager,model_hotel_reservation,group_hotel_manager,1,1,1,1
-access_hotel_reservation_line_user,hotel.reservation.line.user,model_hotel_reservation_line,group_hotel_user,1,1,1,0
-access_hotel_reservation_line_manager,hotel.reservation.line.manager,model_hotel_reservation_line,group_hotel_manager,1,1,1,1
-access_hotel_reservation_payment_user,hotel.reservation.payment.user,model_hotel_reservation_payment,group_hotel_user,1,1,1,0
-access_hotel_reservation_payment_manager,hotel.reservation.payment.manager,model_hotel_reservation_payment,group_hotel_manager,1,1,1,1
-access_hotel_payment_wizard_user,hotel.payment.wizard.user,model_hotel_payment_wizard,group_hotel_user,1,1,1,0
-access_hotel_payment_wizard_manager,hotel.payment.wizard.manager,model_hotel_payment_wizard,group_hotel_manager,1,1,1,1
+access_hotel_reservation_user,hotel.reservation.user,model_hotel_reservation,base.group_user,1,1,1,1
+access_hotel_reservation_line_user,hotel.reservation.line.user,model_hotel_reservation_line,base.group_user,1,1,1,1
+access_hotel_reservation_payment_user,hotel.reservation.payment.user,model_hotel_reservation_payment,base.group_user,1,1,1,1
+access_hotel_room_user,hotel.room.user,model_hotel_room,base.group_user,1,1,1,0
+access_hotel_room_type_user,hotel.room.type.user,model_hotel_room_type,base.group_user,1,1,1,0
+access_hotel_payment_wizard_user,hotel.payment.wizard.user,model_hotel_payment_wizard,base.group_user,1,1,1,1
+access_hotel_checkout_wizard_user,hotel.checkout.wizard.user,model_hotel_checkout_wizard,base.group_user,1,1,1,1
