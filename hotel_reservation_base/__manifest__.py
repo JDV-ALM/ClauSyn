@@ -35,6 +35,9 @@
         
         # Data
         'data/sequence_data.xml',
+
+        # Wizards
+        'wizards/hotel_payment_wizard_views.xml',
         
         # Views
         'views/hotel_reservation_views.xml',
@@ -43,8 +46,6 @@
         'views/res_config_settings_views.xml',
         'views/menuitems.xml',
         
-        # Wizards
-        'wizards/hotel_payment_wizard_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
