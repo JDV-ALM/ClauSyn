@@ -4,7 +4,7 @@
 
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class HotelReservation(models.Model):
@@ -14,11 +14,12 @@ class HotelReservation(models.Model):
     _order = 'checkin_date desc, id desc'
     
     name = fields.Char(
-        string='Código',
+        string='Número de Reserva',
         required=True,
         copy=False,
         readonly=True,
-        default=lambda self: _('New')
+        default=lambda self: _('New'),
+        tracking=True
     )
     
     partner_id = fields.Many2one(
@@ -26,88 +27,99 @@ class HotelReservation(models.Model):
         string='Cliente',
         required=True,
         tracking=True,
-        help='Cliente de la reserva'
+        help='Cliente responsable de la reserva'
     )
     
-    pricelist_id = fields.Many2one(
-        'product.pricelist',
-        string='Lista de Precios',
-        required=True,
-        tracking=True,
-        help='Lista de precios para esta reserva'
+    room_id = fields.Many2one(
+        'product.product',
+        string='Habitación',
+        domain=[('is_room', '=', True)],
+        help='Producto configurado como habitación'
     )
     
     room_number = fields.Char(
-        string='Habitación',
+        string='Número/Nombre de Habitación',
         required=True,
         tracking=True,
-        help='Identificador de habitación'
+        help='Identificador físico de la habitación'
+    )
+    
+    room_type_id = fields.Many2one(
+        'product.category',
+        string='Tipo de Habitación',
+        compute='_compute_room_type',
+        store=True
     )
     
     checkin_date = fields.Datetime(
         string='Check-in Previsto',
         required=True,
         tracking=True,
-        default=fields.Datetime.now
-    )
-    
-    checkin_real = fields.Datetime(
-        string='Check-in Real',
-        tracking=True,
-        help='Fecha y hora real de entrada'
+        default=lambda self: fields.Datetime.now()
     )
     
     checkout_date = fields.Datetime(
         string='Check-out Previsto',
         required=True,
+        tracking=True,
+        default=lambda self: fields.Datetime.now() + timedelta(days=1)
+    )
+    
+    checkin_real = fields.Datetime(
+        string='Check-in Real',
+        readonly=True,
         tracking=True
     )
     
     checkout_real = fields.Datetime(
         string='Check-out Real',
-        tracking=True,
-        help='Fecha y hora real de salida'
+        readonly=True,
+        tracking=True
+    )
+    
+    adults = fields.Integer(
+        string='Adultos',
+        default=1,
+        required=True
+    )
+    
+    children = fields.Integer(
+        string='Niños',
+        default=0
     )
     
     state = fields.Selection([
         ('draft', 'Borrador'),
         ('confirmed', 'Confirmada'),
         ('checked_in', 'En Casa'),
-        ('checked_out', 'Checkout Realizado'),
+        ('checked_out', 'Check-out'),
         ('done', 'Facturada'),
         ('cancelled', 'Cancelada')
-    ], string='Estado', default='draft', tracking=True, copy=False)
+    ], string='Estado', default='draft', tracking=True, required=True)
     
-    # Relaciones
+    # Relaciones con otros modelos
     line_ids = fields.One2many(
         'hotel.reservation.line',
         'reservation_id',
-        string='Cargos Manuales',
-        copy=False
+        string='Cargos Manuales'
     )
     
     payment_ids = fields.One2many(
         'hotel.reservation.payment',
         'reservation_id',
-        string='Anticipos',
-        copy=False
+        string='Anticipos'
     )
     
-    # Este campo se habilitará cuando se instale pos_hotel_integration
-    # pos_order_ids = fields.One2many(
-    #     'pos.order',
-    #     'hotel_reservation_id',
-    #     string='Órdenes POS',
-    #     copy=False,
-    #     readonly=True
-    # )
+    pos_order_ids = fields.One2many(
+        'pos.order',
+        'hotel_reservation_id',
+        string='Órdenes POS',
+        domain=[('state', 'in', ['paid', 'done', 'invoiced'])]
+    )
     
-    sale_order_id = fields.Many2one(
-        'sale.order',
-        string='Orden de Venta',
-        readonly=True,
-        copy=False,
-        help='Orden de venta generada en el checkout'
+    pos_order_count = fields.Integer(
+        string='Número de Órdenes POS',
+        compute='_compute_pos_order_count'
     )
     
     # Campos monetarios
@@ -115,10 +127,53 @@ class HotelReservation(models.Model):
         'res.currency',
         string='Moneda',
         required=True,
-        default=lambda self: self._get_default_currency(),
-        help='Moneda base de la reserva (típicamente USD)'
+        default=lambda self: self.env.company.currency_id
     )
     
+    room_subtotal = fields.Monetary(
+        string='Subtotal Habitación',
+        compute='_compute_amounts',
+        store=True,
+        currency_field='currency_id'
+    )
+    
+    charges_subtotal = fields.Monetary(
+        string='Subtotal Cargos Manuales',
+        compute='_compute_amounts',
+        store=True,
+        currency_field='currency_id'
+    )
+    
+    pos_charges_subtotal = fields.Monetary(
+        string='Subtotal Consumos POS',
+        compute='_compute_amounts',
+        store=True,
+        currency_field='currency_id'
+    )
+    
+    amount_total = fields.Monetary(
+        string='Total',
+        compute='_compute_amounts',
+        store=True,
+        currency_field='currency_id',
+        tracking=True
+    )
+    
+    total_paid = fields.Monetary(
+        string='Total Pagado',
+        compute='_compute_amounts',
+        store=True,
+        currency_field='currency_id'
+    )
+    
+    balance = fields.Monetary(
+        string='Saldo',
+        compute='_compute_amounts',
+        store=True,
+        currency_field='currency_id'
+    )
+    
+    # Otros campos
     company_id = fields.Many2one(
         'res.company',
         string='Compañía',
@@ -126,62 +181,68 @@ class HotelReservation(models.Model):
         default=lambda self: self.env.company
     )
     
-    amount_total = fields.Monetary(
-        string='Total Consumos',
-        compute='_compute_totals',
-        store=True,
-        currency_field='currency_id',
-        help='Total de consumos en la moneda de la reserva'
-    )
-    
-    amount_paid = fields.Monetary(
-        string='Total Anticipos',
-        compute='_compute_totals',
-        store=True,
-        currency_field='currency_id',
-        help='Total de anticipos convertidos a la moneda de la reserva'
-    )
-    
-    balance = fields.Monetary(
-        string='Saldo Pendiente',
-        compute='_compute_totals',
-        store=True,
-        currency_field='currency_id',
-        help='Saldo pendiente en la moneda de la reserva'
-    )
-    
     notes = fields.Text(
         string='Notas',
-        help='Observaciones internas'
+        help='Notas internas sobre la reserva'
     )
     
-    def _get_default_currency(self):
-        """Obtiene la moneda por defecto (USD si existe, sino la de la compañía)"""
-        usd = self.env['res.currency'].search([('name', '=', 'USD')], limit=1)
-        return usd if usd else self.env.company.currency_id
-    
-    @api.onchange('partner_id')
-    def _onchange_partner_id(self):
-        """Actualiza la lista de precios basada en el cliente"""
-        if self.partner_id:
-            # Si el cliente tiene una lista de precios específica
-            if self.partner_id.property_product_pricelist:
-                self.pricelist_id = self.partner_id.property_product_pricelist
+    # Métodos de cálculo
+    @api.depends('room_id')
+    def _compute_room_type(self):
+        for reservation in self:
+            if reservation.room_id:
+                reservation.room_type_id = reservation.room_id.categ_id
             else:
-                # Buscar lista de precios por defecto en la moneda de la reserva
-                pricelist = self.env['product.pricelist'].search([
-                    ('currency_id', '=', self.currency_id.id),
-                    ('active', '=', True)
-                ], limit=1)
-                if pricelist:
-                    self.pricelist_id = pricelist
+                reservation.room_type_id = False
     
-    @api.onchange('pricelist_id')
-    def _onchange_pricelist_id(self):
-        """Actualiza la moneda basada en la lista de precios"""
-        if self.pricelist_id:
-            self.currency_id = self.pricelist_id.currency_id
+    @api.depends('pos_order_ids')
+    def _compute_pos_order_count(self):
+        for reservation in self:
+            reservation.pos_order_count = len(reservation.pos_order_ids)
     
+    @api.depends('line_ids.subtotal', 'payment_ids.amount', 
+                 'pos_order_ids.amount_total', 'room_id', 
+                 'checkin_date', 'checkout_date')
+    def _compute_amounts(self):
+        for reservation in self:
+            # Calcular noches
+            if reservation.checkin_date and reservation.checkout_date:
+                delta = reservation.checkout_date - reservation.checkin_date
+                nights = delta.days
+            else:
+                nights = 0
+            
+            # Subtotal habitación
+            if reservation.room_id and nights > 0:
+                reservation.room_subtotal = reservation.room_id.list_price * nights
+            else:
+                reservation.room_subtotal = 0.0
+            
+            # Subtotal cargos manuales
+            reservation.charges_subtotal = sum(line.subtotal for line in reservation.line_ids)
+            
+            # Subtotal órdenes POS
+            reservation.pos_charges_subtotal = sum(
+                order.amount_total for order in reservation.pos_order_ids
+                if order.state in ['paid', 'done', 'invoiced']
+            )
+            
+            # Total general
+            reservation.amount_total = (
+                reservation.room_subtotal + 
+                reservation.charges_subtotal + 
+                reservation.pos_charges_subtotal
+            )
+            
+            # Total pagado (anticipos)
+            reservation.total_paid = sum(
+                payment.amount_reservation_currency for payment in reservation.payment_ids
+            )
+            
+            # Saldo
+            reservation.balance = reservation.amount_total - reservation.total_paid
+    
+    # Secuencia
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -189,26 +250,7 @@ class HotelReservation(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('hotel.reservation') or _('New')
         return super().create(vals_list)
     
-    @api.depends('line_ids.price_total', 'payment_ids.amount_reservation_currency')
-    def _compute_totals(self):
-        for reservation in self:
-            # Total de cargos manuales
-            manual_charges = sum(reservation.line_ids.mapped('price_total'))
-            
-            # Total de órdenes POS se calculará cuando se instale pos_hotel_integration
-            pos_charges = 0
-            # if hasattr(reservation, 'pos_order_ids'):
-            #     pos_charges = sum(reservation.pos_order_ids.filtered(
-            #         lambda o: o.paid_later
-            #     ).mapped('amount_total'))
-            
-            # Total de anticipos (convertidos a la moneda de la reserva)
-            total_payments = sum(reservation.payment_ids.mapped('amount_reservation_currency'))
-            
-            reservation.amount_total = manual_charges + pos_charges
-            reservation.amount_paid = total_payments
-            reservation.balance = reservation.amount_total - reservation.amount_paid
-    
+    # Métodos de acción - CORREGIDOS CON NOMBRES CORRECTOS
     def action_confirm(self):
         """Confirma la reserva"""
         for reservation in self:
@@ -222,11 +264,11 @@ class HotelReservation(models.Model):
             reservation.state = 'confirmed'
             reservation.message_post(body=_('Reserva confirmada'))
     
-    def action_checkin(self):
-        """Registra entrada del huésped"""
+    def action_check_in(self):
+        """Registra entrada del huésped - NOMBRE CORREGIDO"""
         for reservation in self:
             if reservation.state != 'confirmed':
-                raise UserError(_('Solo se puede hacer checkin de reservas confirmadas'))
+                raise UserError(_('Solo se puede hacer check-in de reservas confirmadas'))
             
             reservation.write({
                 'state': 'checked_in',
@@ -234,17 +276,17 @@ class HotelReservation(models.Model):
             })
             reservation.message_post(body=_('Check-in realizado'))
     
-    def action_checkout(self):
-        """Inicia proceso de checkout"""
+    def action_check_out(self):
+        """Inicia proceso de checkout - NOMBRE CORREGIDO"""
         for reservation in self:
             if reservation.state != 'checked_in':
-                raise UserError(_('Solo se puede hacer checkout de reservas en casa'))
+                raise UserError(_('Solo se puede hacer check-out de reservas en casa'))
             
             reservation.write({
                 'state': 'checked_out',
                 'checkout_real': fields.Datetime.now()
             })
-            reservation.message_post(body=_('Checkout realizado'))
+            reservation.message_post(body=_('Check-out realizado'))
             
             # Aquí se llamará al wizard de checkout en el módulo hotel_sale_bridge
             # Por ahora solo cambiamos el estado
@@ -253,7 +295,7 @@ class HotelReservation(models.Model):
         """Marca como facturada"""
         for reservation in self:
             if reservation.state != 'checked_out':
-                raise UserError(_('Solo se pueden marcar como facturadas las reservas con checkout'))
+                raise UserError(_('Solo se pueden marcar como facturadas las reservas con check-out'))
             
             if reservation.balance > 0.01:  # Tolerancia de centavos
                 raise UserError(_('No se puede cerrar una reserva con saldo pendiente'))
@@ -274,18 +316,18 @@ class HotelReservation(models.Model):
             reservation.state = 'cancelled'
             reservation.message_post(body=_('Reserva cancelada'))
     
-    # def action_view_pos_orders(self):
-    #     """Abre vista de órdenes POS relacionadas"""
-    #     """Se habilitará cuando se instale pos_hotel_integration"""
-    #     self.ensure_one()
-    #     return {
-    #         'type': 'ir.actions.act_window',
-    #         'name': _('Órdenes POS'),
-    #         'res_model': 'pos.order',
-    #         'view_mode': 'tree,form',
-    #         'domain': [('hotel_reservation_id', '=', self.id)],
-    #         'context': {'default_hotel_reservation_id': self.id}
-    #     }
+    def action_view_pos_orders(self):
+        """Abre vista de órdenes POS relacionadas"""
+        # Se habilitará cuando se instale pos_hotel_integration
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Órdenes POS'),
+            'res_model': 'pos.order',
+            'view_mode': 'tree,form',
+            'domain': [('hotel_reservation_id', '=', self.id)],
+            'context': {'default_hotel_reservation_id': self.id}
+        }
     
     def action_register_payment(self):
         """Abre wizard para registrar anticipo"""
