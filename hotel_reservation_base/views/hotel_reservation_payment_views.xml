@@ -149,12 +149,5 @@
             </p>
         </field>
     </record>
-    
-    <!-- Menu Item -->
-    <menuitem id="menu_hotel_reservation_payment"
-              name="Anticipos"
-              parent="menu_hotel_reports"
-              action="action_hotel_reservation_payment"
-              sequence="20"/>
-    
+
 </odoo>
