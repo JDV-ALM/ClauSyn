@@ -18,12 +18,12 @@
                             </div>
                             <div class="content-group">
                                 <div class="mt16">
-                                    <field name="hotel_advance_account_id" 
+                                    <field name="hotel_advance_account_id"
                                            options="{'no_create': True, 'no_open': True}"
                                            required="1"
                                            domain="[('account_type', 'in', ['liability_current', 'liability_non_current']), ('deprecated', '=', False), ('company_id', '=', company_id)]"/>
                                 </div>
-                                <div class="text-muted" attrs="{'invisible': [('hotel_advance_account_id', '=', False)]}">
+                                <div class="text-muted" invisible="not hotel_advance_account_id">
                                     <i class="fa fa-info-circle"/> Los anticipos se registrarán en esta cuenta hasta que se genere la factura y se concilie el pago
                                 </div>
                             </div>

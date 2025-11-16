@@ -24,11 +24,11 @@
                 <field name="reference" optional="show"/>
                 <field name="account_payment_id" optional="hide"/>
                 <field name="is_applied" widget="boolean_toggle" readonly="1"/>
-                <button name="action_view_account_payment" 
-                        type="object" 
-                        icon="fa-external-link" 
+                <button name="action_view_account_payment"
+                        type="object"
+                        icon="fa-external-link"
                         string="Ver Pago"
-                        attrs="{'invisible': [('account_payment_id', '=', False)]}"/>
+                        invisible="not account_payment_id"/>
             </tree>
         </field>
     </record>
@@ -40,11 +40,11 @@
         <field name="arch" type="xml">
             <form string="Anticipo">
                 <header>
-                    <button name="action_apply_to_checkout" 
-                            string="Aplicar al Checkout" 
-                            type="object" 
+                    <button name="action_apply_to_checkout"
+                            string="Aplicar al Checkout"
+                            type="object"
                             class="btn-primary"
-                            attrs="{'invisible': ['|', ('is_applied', '=', True), ('state', 'not in', ['checked_in'])]}"/>
+                            invisible="is_applied or state not in ['checked_in']"/>
                     <field name="is_applied" widget="boolean_toggle" readonly="1"/>
                 </header>
                 <sheet>
@@ -53,7 +53,7 @@
                                 type="object"
                                 class="oe_stat_button"
                                 icon="fa-money"
-                                attrs="{'invisible': [('account_payment_id', '=', False)]}">
+                                invisible="not account_payment_id">
                             <field name="account_payment_id" widget="statinfo" string="Pago Contable"/>
                         </button>
                     </div>
@@ -72,10 +72,10 @@
                         <group>
                             <field name="amount" widget="monetary" readonly="1"/>
                             <field name="currency_id" readonly="1" groups="base.group_multi_currency"/>
-                            <field name="amount_reservation_currency" 
-                                   widget="monetary" 
+                            <field name="amount_reservation_currency"
+                                   widget="monetary"
                                    readonly="1"
-                                   attrs="{'invisible': [('currency_id', '=', reservation_currency_id)]}"
+                                   invisible="currency_id == reservation_currency_id"
                                    string="Monto en Moneda de Reserva"/>
                             <field name="reservation_currency_id" invisible="1"/>
                             <field name="payment_date" readonly="1"/>

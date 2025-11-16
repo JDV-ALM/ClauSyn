@@ -9,34 +9,34 @@
         <field name="arch" type="xml">
             <form string="Reserva de Hotel">
                 <header>
-                    <button name="action_confirm" 
-                            string="Confirmar" 
-                            type="object" 
-                            class="btn-primary"
-                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
-                    <button name="action_check_in" 
-                            string="Check-in" 
-                            type="object" 
-                            class="btn-primary"
-                            attrs="{'invisible': [('state', '!=', 'confirmed')]}"/>
-                    <button name="action_check_out" 
-                            string="Check-out" 
-                            type="object" 
-                            class="btn-primary"
-                            attrs="{'invisible': [('state', '!=', 'checked_in')]}"/>
-                    <button name="action_cancel" 
-                            string="Cancelar" 
+                    <button name="action_confirm"
+                            string="Confirmar"
                             type="object"
-                            attrs="{'invisible': [('state', 'in', ['done', 'cancelled'])]}"/>
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_check_in"
+                            string="Check-in"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_check_out"
+                            string="Check-out"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'checked_in'"/>
+                    <button name="action_cancel"
+                            string="Cancelar"
+                            type="object"
+                            invisible="state in ['done', 'cancelled']"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,checked_in,done"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_view_pos_orders" 
-                                type="object" 
-                                class="oe_stat_button" 
+                        <button name="action_view_pos_orders"
+                                type="object"
+                                class="oe_stat_button"
                                 icon="fa-shopping-cart"
-                                attrs="{'invisible': [('pos_order_count', '=', 0)]}">
+                                invisible="pos_order_count == 0">
                             <field name="pos_order_count" widget="statinfo" string="Órdenes POS"/>
                         </button>
                     </div>
@@ -83,12 +83,12 @@
                             </field>
                         </page>
                         <page string="Anticipos" name="payments">
-                            <button name="%(action_hotel_payment_wizard)d" 
-                                    string="Registrar Anticipo" 
-                                    type="action" 
+                            <button name="%(action_hotel_payment_wizard)d"
+                                    string="Registrar Anticipo"
+                                    type="action"
                                     class="btn-primary mb-2"
                                     context="{'default_reservation_id': active_id, 'default_partner_id': partner_id}"
-                                    attrs="{'invisible': [('state', 'not in', ['confirmed', 'checked_in'])]}"/>
+                                    invisible="state not in ['confirmed', 'checked_in']"/>
                             <field name="payment_ids">
                                 <tree create="false" delete="true">
                                     <field name="payment_date"/>
@@ -104,11 +104,11 @@
                                     <field name="reference" optional="show"/>
                                     <field name="account_payment_id" optional="hide"/>
                                     <field name="is_applied" widget="boolean_toggle" readonly="1"/>
-                                    <button name="action_view_account_payment" 
-                                            type="object" 
-                                            icon="fa-external-link" 
+                                    <button name="action_view_account_payment"
+                                            type="object"
+                                            icon="fa-external-link"
                                             string="Ver Pago"
-                                            attrs="{'invisible': [('account_payment_id', '=', False)]}"/>
+                                            invisible="not account_payment_id"/>
                                 </tree>
                             </field>
                         </page>
