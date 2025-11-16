@@ -129,7 +129,14 @@ class HotelReservation(models.Model):
         required=True,
         default=lambda self: self.env.company.currency_id
     )
-    
+
+    pricelist_id = fields.Many2one(
+        'product.pricelist',
+        string='Lista de Precios',
+        help='Lista de precios para calcular tarifas de productos y servicios',
+        tracking=True
+    )
+
     room_subtotal = fields.Monetary(
         string='Subtotal Habitación',
         compute='_compute_amounts',
@@ -200,8 +207,8 @@ class HotelReservation(models.Model):
         for reservation in self:
             reservation.pos_order_count = len(reservation.pos_order_ids)
     
-    @api.depends('line_ids.subtotal', 'payment_ids.amount', 
-                 'pos_order_ids.amount_total', 'room_id', 
+    @api.depends('line_ids.price_subtotal', 'payment_ids.amount',
+                 'pos_order_ids.amount_total', 'room_id',
                  'checkin_date', 'checkout_date')
     def _compute_amounts(self):
         for reservation in self:
@@ -211,15 +218,15 @@ class HotelReservation(models.Model):
                 nights = delta.days
             else:
                 nights = 0
-            
+
             # Subtotal habitación
             if reservation.room_id and nights > 0:
                 reservation.room_subtotal = reservation.room_id.list_price * nights
             else:
                 reservation.room_subtotal = 0.0
-            
+
             # Subtotal cargos manuales
-            reservation.charges_subtotal = sum(line.subtotal for line in reservation.line_ids)
+            reservation.charges_subtotal = sum(line.price_subtotal for line in reservation.line_ids)
             
             # Subtotal órdenes POS
             reservation.pos_charges_subtotal = sum(
