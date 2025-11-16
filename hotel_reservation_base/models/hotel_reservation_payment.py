@@ -267,6 +267,13 @@ class HotelReservationPayment(models.Model):
             })
         
         # Preparar valores del payment
+        ref_text = _('Anticipo - Reserva %s - Hab. %s') % (
+            self.reservation_id.name,
+            self.room_number
+        )
+        if self.reference:
+            ref_text += _(' - Ref: %s') % self.reference
+
         payment_vals = {
             'payment_type': payment_type,
             'partner_type': partner_type,
@@ -277,12 +284,8 @@ class HotelReservationPayment(models.Model):
             'journal_id': self.journal_id.id,
             'payment_method_line_id': payment_method_line.id,
             'destination_account_id': destination_account.id,
-            'ref': _('Anticipo - Reserva %s - Hab. %s') % (
-                self.reservation_id.name,
-                self.room_number
-            ),
-            'payment_reference': self.reference or '',
-            # Campos específicos para anticipos de hotel
+            'ref': ref_text,
+            # Campos específicos para anticipos de hotel (definidos en account_payment.py)
             'is_hotel_advance': True,
             'hotel_reservation_payment_id': self.id,
         }

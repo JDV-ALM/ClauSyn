@@ -23,9 +23,12 @@ class AccountPayment(models.Model):
         ondelete='restrict'
     )
     
-    def _prepare_move_line_default_vals(self, write_off_line_vals=None):
+    def _prepare_move_line_default_vals(self, write_off_line_vals=None, force_balance=None):
         """Override para usar cuenta de anticipos cuando aplique"""
-        line_vals_list = super()._prepare_move_line_default_vals(write_off_line_vals)
+        line_vals_list = super()._prepare_move_line_default_vals(
+            write_off_line_vals=write_off_line_vals,
+            force_balance=force_balance
+        )
         
         # Si es un anticipo de hotel, modificar la cuenta destino
         if self.is_hotel_advance:
