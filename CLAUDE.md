@@ -629,6 +629,106 @@ context = self.env.context
 
 ---
 
+## Troubleshooting
+
+### Common Installation Errors
+
+#### KeyError: 'hotel_reservation_id' on POS Order
+
+**Error Message:**
+```
+KeyError: 'hotel_reservation_id'
+  File "/odoo/fields.py", line 4440, in setup_nonrelated
+    invf = comodel._fields[self.inverse_name]
+```
+
+**Cause:** The `hotel.reservation` model defines a One2many relationship with `pos.order` using the inverse field `hotel_reservation_id`, but this field doesn't exist in the `pos.order` model.
+
+**Solution:** Create a model inheritance file to extend `pos.order`:
+
+1. Create `models/pos_order.py`:
+```python
+# -*- coding: utf-8 -*-
+# Desarrollado por Almus Dev (JDV-ALM)
+# www.almus.dev
+
+from odoo import models, fields
+
+class PosOrder(models.Model):
+    _inherit = 'pos.order'
+
+    hotel_reservation_id = fields.Many2one(
+        'hotel.reservation',
+        string='Reserva de Hotel',
+        help='Reserva hotelera asociada a esta orden',
+        index=True,
+        ondelete='restrict'
+    )
+```
+
+2. Import it in `models/__init__.py`:
+```python
+from . import pos_order
+```
+
+#### Field Name Mismatches
+
+**Symptoms:** Fields referenced in views or computed methods don't exist in the model.
+
+**Common Issues:**
+- Using `subtotal` instead of `price_subtotal` in `hotel.reservation.line`
+- Using `description` instead of `name` in views
+- Missing `pricelist_id` field in `hotel.reservation`
+
+**Solution:** Always verify field names match between:
+- Model definitions (`fields.Something()`)
+- View XML (`<field name="..."/>`)
+- Python code (`record.field_name`)
+- `@api.depends()` decorators
+
+Use grep to check field existence:
+```bash
+# Check if field exists in model
+grep "field_name = fields\." models/model_name.py
+
+# Find all references to a field
+grep -r "field_name" .
+```
+
+#### Missing Related Fields
+
+**Error:** Related field references a field that doesn't exist in the parent model.
+
+**Example:**
+```python
+# In hotel.reservation.line
+pricelist_id = fields.Many2one(
+    related='reservation_id.pricelist_id',  # This field must exist in hotel.reservation!
+    ...
+)
+```
+
+**Solution:** Ensure the parent model has the field:
+```python
+# In hotel.reservation
+pricelist_id = fields.Many2one(
+    'product.pricelist',
+    string='Lista de Precios',
+    ...
+)
+```
+
+### Debugging Tips
+
+1. **Check module logs:** Look for detailed error messages in Odoo logs
+2. **Verify dependencies:** Ensure all modules in `depends` are installed
+3. **Update module:** Use `-u module_name` flag when restarting Odoo
+4. **Check field definitions:** Use `grep` to verify field names
+5. **Validate XML:** Ensure all `<field name="..."/>` match model fields
+6. **Check import order:** Models must be imported before models that inherit them
+
+---
+
 ## Support and Resources
 
 - **Developer**: Almus Dev (JDV-ALM)
