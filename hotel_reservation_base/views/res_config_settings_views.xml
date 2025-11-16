@@ -33,27 +33,5 @@
             </xpath>
         </field>
     </record>
-    
-    <!-- Action para abrir configuración -->
-    <record id="action_hotel_config_settings" model="ir.actions.act_window">
-        <field name="name">Configuración</field>
-        <field name="type">ir.actions.act_window</field>
-        <field name="res_model">res.config.settings</field>
-        <field name="view_mode">form</field>
-        <field name="target">inline</field>
-        <field name="context">{'module': 'hotel_reservation_base'}</field>
-    </record>
-    
-    <!-- Menu item de configuración -->
-    <menuitem id="menu_hotel_config"
-              name="Configuración"
-              parent="menu_hotel_root"
-              sequence="99"/>
-    
-    <menuitem id="menu_hotel_config_settings"
-              name="Ajustes"
-              parent="menu_hotel_config"
-              action="action_hotel_config_settings"
-              sequence="1"/>
-    
+
 </odoo>

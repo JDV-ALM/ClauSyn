@@ -29,26 +29,12 @@ class HotelReservation(models.Model):
         tracking=True,
         help='Cliente responsable de la reserva'
     )
-    
-    room_id = fields.Many2one(
-        'product.product',
-        string='Habitación',
-        domain=[('is_room', '=', True)],
-        help='Producto configurado como habitación'
-    )
-    
+
     room_number = fields.Char(
         string='Número/Nombre de Habitación',
         required=True,
         tracking=True,
         help='Identificador físico de la habitación'
-    )
-    
-    room_type_id = fields.Many2one(
-        'product.category',
-        string='Tipo de Habitación',
-        compute='_compute_room_type',
-        store=True
     )
     
     checkin_date = fields.Datetime(
@@ -137,13 +123,6 @@ class HotelReservation(models.Model):
         tracking=True
     )
 
-    room_subtotal = fields.Monetary(
-        string='Subtotal Habitación',
-        compute='_compute_amounts',
-        store=True,
-        currency_field='currency_id'
-    )
-    
     charges_subtotal = fields.Monetary(
         string='Subtotal Cargos Manuales',
         compute='_compute_amounts',
@@ -194,58 +173,35 @@ class HotelReservation(models.Model):
     )
     
     # Métodos de cálculo
-    @api.depends('room_id')
-    def _compute_room_type(self):
-        for reservation in self:
-            if reservation.room_id:
-                reservation.room_type_id = reservation.room_id.categ_id
-            else:
-                reservation.room_type_id = False
-    
     @api.depends('pos_order_ids')
     def _compute_pos_order_count(self):
         for reservation in self:
             reservation.pos_order_count = len(reservation.pos_order_ids)
     
     @api.depends('line_ids.price_subtotal', 'payment_ids.amount',
-                 'pos_order_ids.amount_total', 'room_id',
-                 'checkin_date', 'checkout_date')
+                 'pos_order_ids.amount_total')
     def _compute_amounts(self):
         for reservation in self:
-            # Calcular noches
-            if reservation.checkin_date and reservation.checkout_date:
-                delta = reservation.checkout_date - reservation.checkin_date
-                nights = delta.days
-            else:
-                nights = 0
-
-            # Subtotal habitación
-            if reservation.room_id and nights > 0:
-                reservation.room_subtotal = reservation.room_id.list_price * nights
-            else:
-                reservation.room_subtotal = 0.0
-
             # Subtotal cargos manuales
             reservation.charges_subtotal = sum(line.price_subtotal for line in reservation.line_ids)
-            
+
             # Subtotal órdenes POS
             reservation.pos_charges_subtotal = sum(
                 order.amount_total for order in reservation.pos_order_ids
                 if order.state in ['paid', 'done', 'invoiced']
             )
-            
-            # Total general
+
+            # Total general (solo cargos manuales + POS)
             reservation.amount_total = (
-                reservation.room_subtotal + 
-                reservation.charges_subtotal + 
+                reservation.charges_subtotal +
                 reservation.pos_charges_subtotal
             )
-            
+
             # Total pagado (anticipos)
             reservation.total_paid = sum(
                 payment.amount_reservation_currency for payment in reservation.payment_ids
             )
-            
+
             # Saldo
             reservation.balance = reservation.amount_total - reservation.total_paid
     

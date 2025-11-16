@@ -153,7 +153,7 @@
     <!-- Menu Item -->
     <menuitem id="menu_hotel_reservation_payment"
               name="Anticipos"
-              parent="hotel_reservation_base.menu_hotel_reservation"
+              parent="menu_hotel_reports"
               action="action_hotel_reservation_payment"
               sequence="20"/>
     
