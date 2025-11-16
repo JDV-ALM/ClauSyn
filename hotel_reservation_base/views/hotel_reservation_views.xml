@@ -86,7 +86,7 @@
                                     string="Registrar Anticipo"
                                     type="action"
                                     class="btn-primary mb-2"
-                                    context="{'default_reservation_id': active_id, 'default_partner_id': partner_id}"
+                                    context="{'default_reservation_id': id, 'default_partner_id': partner_id}"
                                     invisible="state not in ['confirmed', 'checked_in']"/>
                             <field name="payment_ids">
                                 <tree create="false" delete="true">
