@@ -6,4 +6,5 @@ from . import hotel_reservation
 from . import hotel_reservation_line
 from . import hotel_reservation_payment
 from . import account_payment
+from . import pos_order
 from . import res_config_settings

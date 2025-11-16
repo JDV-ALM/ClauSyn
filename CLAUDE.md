@@ -629,6 +629,229 @@ context = self.env.context
 
 ---
 
+## Troubleshooting
+
+### Common Installation Errors
+
+#### KeyError: 'hotel_reservation_id' on POS Order
+
+**Error Message:**
+```
+KeyError: 'hotel_reservation_id'
+  File "/odoo/fields.py", line 4440, in setup_nonrelated
+    invf = comodel._fields[self.inverse_name]
+```
+
+**Cause:** The `hotel.reservation` model defines a One2many relationship with `pos.order` using the inverse field `hotel_reservation_id`, but this field doesn't exist in the `pos.order` model.
+
+**Solution:** Create a model inheritance file to extend `pos.order`:
+
+1. Create `models/pos_order.py`:
+```python
+# -*- coding: utf-8 -*-
+# Desarrollado por Almus Dev (JDV-ALM)
+# www.almus.dev
+
+from odoo import models, fields
+
+class PosOrder(models.Model):
+    _inherit = 'pos.order'
+
+    hotel_reservation_id = fields.Many2one(
+        'hotel.reservation',
+        string='Reserva de Hotel',
+        help='Reserva hotelera asociada a esta orden',
+        index=True,
+        ondelete='restrict'
+    )
+```
+
+2. Import it in `models/__init__.py`:
+```python
+from . import pos_order
+```
+
+#### Field Name Mismatches
+
+**Symptoms:** Fields referenced in views or computed methods don't exist in the model.
+
+**Common Issues:**
+- Using `subtotal` instead of `price_subtotal` in `hotel.reservation.line`
+- Using `description` instead of `name` in views
+- Missing `pricelist_id` field in `hotel.reservation`
+
+**Solution:** Always verify field names match between:
+- Model definitions (`fields.Something()`)
+- View XML (`<field name="..."/>`)
+- Python code (`record.field_name`)
+- `@api.depends()` decorators
+
+Use grep to check field existence:
+```bash
+# Check if field exists in model
+grep "field_name = fields\." models/model_name.py
+
+# Find all references to a field
+grep -r "field_name" .
+```
+
+#### Missing Related Fields
+
+**Error:** Related field references a field that doesn't exist in the parent model.
+
+**Example:**
+```python
+# In hotel.reservation.line
+pricelist_id = fields.Many2one(
+    related='reservation_id.pricelist_id',  # This field must exist in hotel.reservation!
+    ...
+)
+```
+
+**Solution:** Ensure the parent model has the field:
+```python
+# In hotel.reservation
+pricelist_id = fields.Many2one(
+    'product.pricelist',
+    string='Lista de Precios',
+    ...
+)
+```
+
+#### ParseError: 'attrs' and 'states' attributes no longer used
+
+**Error Message:**
+```
+odoo.tools.convert.ParseError: while parsing /path/to/views.xml:X
+Since 17.0, the "attrs" and "states" attributes are no longer used.
+```
+
+**Cause:** Odoo 17.0 deprecated the `attrs` attribute in favor of direct attribute syntax. The old domain-based syntax is no longer supported.
+
+**Solution:** Convert `attrs` to direct attributes using Python expressions:
+
+**Common Conversions:**
+
+```xml
+<!-- OLD (Odoo 16 and earlier) -->
+<button attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+<field attrs="{'readonly': [('state', 'in', ['done', 'cancelled'])]}"/>
+<field attrs="{'required': [('type', '=', 'specific')]}"/>
+<button attrs="{'invisible': ['|', ('x', '=', True), ('y', '=', False)]}"/>
+<field attrs="{'invisible': [('field_id', '=', False)]}"/>
+
+<!-- NEW (Odoo 17+) -->
+<button invisible="state != 'draft'"/>
+<field readonly="state in ['done', 'cancelled']"/>
+<field required="type == 'specific'"/>
+<button invisible="x or not y"/>
+<field invisible="not field_id"/>
+```
+
+**Conversion Rules:**
+
+| Old Domain Syntax | New Python Expression |
+|-------------------|----------------------|
+| `[('field', '=', value)]` | `field == value` |
+| `[('field', '!=', value)]` | `field != value` |
+| `[('field', '>', value)]` | `field > value` |
+| `[('field', 'in', [a, b])]` | `field in [a, b]` |
+| `[('field', 'not in', [a, b])]` | `field not in [a, b]` |
+| `[('field', '=', False)]` | `not field` |
+| `[('field', '!=', False)]` | `field` |
+| `['|', ('a', '=', x), ('b', '=', y)]` | `a == x or b == y` |
+| `[('a', '=', x), ('b', '=', y)]` | `a == x and b == y` |
+
+**Tips:**
+- Use `not field` instead of `field == False` for boolean/Many2one checks
+- Use `field` instead of `field != False`
+- Logical OR: use Python `or`
+- Logical AND: conditions separated by comma or use Python `and`
+- String values need single quotes: `state == 'draft'`
+- Lists use Python syntax: `[value1, value2]`
+
+**Find all attrs usage:**
+```bash
+grep -r "attrs=" views/
+```
+
+#### Field with 'groups' used in modifier expressions
+
+**Error Message:**
+```
+odoo.tools.convert.ParseError: while parsing /path/to/views.xml:X
+Field 'field_name' used in modifier 'invisible' (...) is restricted to the group(s) xxx.
+```
+
+**Cause:** In Odoo 17, when a field has a `groups` attribute restriction, it cannot be used in `invisible`, `readonly`, or `required` expressions of other fields. The system needs to access the field value to evaluate the condition, but the field is restricted.
+
+**Example of the Problem:**
+```xml
+<!-- This FAILS in Odoo 17 -->
+<field name="currency_id" groups="base.group_multi_currency"/>
+<field name="amount_reservation_currency"
+       invisible="currency_id == reservation_currency_id"/>
+```
+
+The error occurs because `amount_reservation_currency` needs to read `currency_id` to evaluate the `invisible` condition, but `currency_id` is restricted to `base.group_multi_currency`.
+
+**Solutions:**
+
+**Option 1: Make the field invisible (most common)**
+If the field is only needed for expressions and not for display:
+```xml
+<!-- SOLUTION: Remove groups, make field invisible -->
+<field name="currency_id" invisible="1"/>
+<field name="amount_reservation_currency"
+       invisible="currency_id == reservation_currency_id"/>
+```
+
+**Option 2: Remove group restriction**
+If the field should be visible to all users:
+```xml
+<!-- SOLUTION: Remove groups restriction -->
+<field name="currency_id" readonly="1"/>
+<field name="amount_reservation_currency"
+       invisible="currency_id == reservation_currency_id"/>
+```
+
+**Option 3: Duplicate the field**
+If you need both restricted visibility AND use in expressions:
+```xml
+<!-- SOLUTION: Use two field instances -->
+<field name="currency_id" invisible="1"/>  <!-- For expressions -->
+<field name="currency_id" groups="base.group_multi_currency"/>  <!-- For display -->
+<field name="amount_reservation_currency"
+       invisible="currency_id == reservation_currency_id"/>
+```
+
+**Common fields affected:**
+- `currency_id` with `groups="base.group_multi_currency"`
+- `company_id` with `groups="base.group_multi_company"`
+- Any custom field with group restrictions
+
+**How to find these issues:**
+```bash
+# Find fields with groups that might be used in expressions
+grep -r "groups=" views/*.xml | grep -E "(currency_id|company_id)"
+
+# Check if they're used in invisible/readonly/required
+grep -r "invisible.*currency_id" views/*.xml
+grep -r "readonly.*currency_id" views/*.xml
+```
+
+### Debugging Tips
+
+1. **Check module logs:** Look for detailed error messages in Odoo logs
+2. **Verify dependencies:** Ensure all modules in `depends` are installed
+3. **Update module:** Use `-u module_name` flag when restarting Odoo
+4. **Check field definitions:** Use `grep` to verify field names
+5. **Validate XML:** Ensure all `<field name="..."/>` match model fields
+6. **Check import order:** Models must be imported before models that inherit them
+7. **Check for deprecated syntax:** Search for `attrs=` and `states=` in XML views
+
+---
+
 ## Support and Resources
 
 - **Developer**: Almus Dev (JDV-ALM)
