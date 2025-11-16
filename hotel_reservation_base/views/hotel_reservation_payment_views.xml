@@ -71,13 +71,13 @@
                         </group>
                         <group>
                             <field name="amount" widget="monetary" readonly="1"/>
-                            <field name="currency_id" readonly="1" groups="base.group_multi_currency"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="reservation_currency_id" invisible="1"/>
                             <field name="amount_reservation_currency"
                                    widget="monetary"
                                    readonly="1"
                                    invisible="currency_id == reservation_currency_id"
                                    string="Monto en Moneda de Reserva"/>
-                            <field name="reservation_currency_id" invisible="1"/>
                             <field name="payment_date" readonly="1"/>
                             <field name="payment_method_id" readonly="1"/>
                         </group>
