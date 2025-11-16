@@ -3,20 +3,22 @@
 # www.almus.dev
 {
     'name': 'Hotel Reservation Base',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Hotel',
-    'summary': 'Sistema base de gestión de reservas hoteleras',
+    'summary': 'Sistema base de gestión de reservas hoteleras con soporte para moneda alternativa',
     'description': """
         Módulo base que gestiona el ciclo de vida de las reservas hoteleras.
         Funciona como contenedor central de todos los consumos y pagos durante
         la estadía del huésped.
-        
+
         Características principales:
         - Gestión completa del ciclo de reservas
         - Registro de consumos manuales
         - Control de anticipos y pagos parciales
         - Cálculo automático de saldos
         - Integración con contabilidad
+        - Sistema de moneda alternativa para economías inflacionarias
+        - Conversión automática de pagos con tasas históricas
     """,
     'author': 'Almus Dev (JDV-ALM)',
     'website': 'https://www.almus.dev',
