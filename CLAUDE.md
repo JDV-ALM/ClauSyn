@@ -718,6 +718,63 @@ pricelist_id = fields.Many2one(
 )
 ```
 
+#### ParseError: 'attrs' and 'states' attributes no longer used
+
+**Error Message:**
+```
+odoo.tools.convert.ParseError: while parsing /path/to/views.xml:X
+Since 17.0, the "attrs" and "states" attributes are no longer used.
+```
+
+**Cause:** Odoo 17.0 deprecated the `attrs` attribute in favor of direct attribute syntax. The old domain-based syntax is no longer supported.
+
+**Solution:** Convert `attrs` to direct attributes using Python expressions:
+
+**Common Conversions:**
+
+```xml
+<!-- OLD (Odoo 16 and earlier) -->
+<button attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+<field attrs="{'readonly': [('state', 'in', ['done', 'cancelled'])]}"/>
+<field attrs="{'required': [('type', '=', 'specific')]}"/>
+<button attrs="{'invisible': ['|', ('x', '=', True), ('y', '=', False)]}"/>
+<field attrs="{'invisible': [('field_id', '=', False)]}"/>
+
+<!-- NEW (Odoo 17+) -->
+<button invisible="state != 'draft'"/>
+<field readonly="state in ['done', 'cancelled']"/>
+<field required="type == 'specific'"/>
+<button invisible="x or not y"/>
+<field invisible="not field_id"/>
+```
+
+**Conversion Rules:**
+
+| Old Domain Syntax | New Python Expression |
+|-------------------|----------------------|
+| `[('field', '=', value)]` | `field == value` |
+| `[('field', '!=', value)]` | `field != value` |
+| `[('field', '>', value)]` | `field > value` |
+| `[('field', 'in', [a, b])]` | `field in [a, b]` |
+| `[('field', 'not in', [a, b])]` | `field not in [a, b]` |
+| `[('field', '=', False)]` | `not field` |
+| `[('field', '!=', False)]` | `field` |
+| `['|', ('a', '=', x), ('b', '=', y)]` | `a == x or b == y` |
+| `[('a', '=', x), ('b', '=', y)]` | `a == x and b == y` |
+
+**Tips:**
+- Use `not field` instead of `field == False` for boolean/Many2one checks
+- Use `field` instead of `field != False`
+- Logical OR: use Python `or`
+- Logical AND: conditions separated by comma or use Python `and`
+- String values need single quotes: `state == 'draft'`
+- Lists use Python syntax: `[value1, value2]`
+
+**Find all attrs usage:**
+```bash
+grep -r "attrs=" views/
+```
+
 ### Debugging Tips
 
 1. **Check module logs:** Look for detailed error messages in Odoo logs
@@ -726,6 +783,7 @@ pricelist_id = fields.Many2one(
 4. **Check field definitions:** Use `grep` to verify field names
 5. **Validate XML:** Ensure all `<field name="..."/>` match model fields
 6. **Check import order:** Models must be imported before models that inherit them
+7. **Check for deprecated syntax:** Search for `attrs=` and `states=` in XML views
 
 ---
 
