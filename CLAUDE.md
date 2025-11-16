@@ -775,6 +775,71 @@ Since 17.0, the "attrs" and "states" attributes are no longer used.
 grep -r "attrs=" views/
 ```
 
+#### Field with 'groups' used in modifier expressions
+
+**Error Message:**
+```
+odoo.tools.convert.ParseError: while parsing /path/to/views.xml:X
+Field 'field_name' used in modifier 'invisible' (...) is restricted to the group(s) xxx.
+```
+
+**Cause:** In Odoo 17, when a field has a `groups` attribute restriction, it cannot be used in `invisible`, `readonly`, or `required` expressions of other fields. The system needs to access the field value to evaluate the condition, but the field is restricted.
+
+**Example of the Problem:**
+```xml
+<!-- This FAILS in Odoo 17 -->
+<field name="currency_id" groups="base.group_multi_currency"/>
+<field name="amount_reservation_currency"
+       invisible="currency_id == reservation_currency_id"/>
+```
+
+The error occurs because `amount_reservation_currency` needs to read `currency_id` to evaluate the `invisible` condition, but `currency_id` is restricted to `base.group_multi_currency`.
+
+**Solutions:**
+
+**Option 1: Make the field invisible (most common)**
+If the field is only needed for expressions and not for display:
+```xml
+<!-- SOLUTION: Remove groups, make field invisible -->
+<field name="currency_id" invisible="1"/>
+<field name="amount_reservation_currency"
+       invisible="currency_id == reservation_currency_id"/>
+```
+
+**Option 2: Remove group restriction**
+If the field should be visible to all users:
+```xml
+<!-- SOLUTION: Remove groups restriction -->
+<field name="currency_id" readonly="1"/>
+<field name="amount_reservation_currency"
+       invisible="currency_id == reservation_currency_id"/>
+```
+
+**Option 3: Duplicate the field**
+If you need both restricted visibility AND use in expressions:
+```xml
+<!-- SOLUTION: Use two field instances -->
+<field name="currency_id" invisible="1"/>  <!-- For expressions -->
+<field name="currency_id" groups="base.group_multi_currency"/>  <!-- For display -->
+<field name="amount_reservation_currency"
+       invisible="currency_id == reservation_currency_id"/>
+```
+
+**Common fields affected:**
+- `currency_id` with `groups="base.group_multi_currency"`
+- `company_id` with `groups="base.group_multi_company"`
+- Any custom field with group restrictions
+
+**How to find these issues:**
+```bash
+# Find fields with groups that might be used in expressions
+grep -r "groups=" views/*.xml | grep -E "(currency_id|company_id)"
+
+# Check if they're used in invisible/readonly/required
+grep -r "invisible.*currency_id" views/*.xml
+grep -r "readonly.*currency_id" views/*.xml
+```
+
 ### Debugging Tips
 
 1. **Check module logs:** Look for detailed error messages in Odoo logs
