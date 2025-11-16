@@ -29,24 +29,26 @@ class HotelPaymentWizard(models.TransientModel):
         readonly=True
     )
     
+    journal_id = fields.Many2one(
+        'account.journal',
+        string='Diario',
+        required=True,
+        domain=[('type', 'in', ['bank', 'cash'])]
+    )
+
     currency_id = fields.Many2one(
         'res.currency',
         string='Moneda',
-        required=True,
-        default=lambda self: self._get_default_currency()
+        related='journal_id.currency_id',
+        readonly=True
     )
-    
+
     reservation_currency_id = fields.Many2one(
         'res.currency',
         string='Moneda Reserva',
         related='reservation_id.currency_id',
         readonly=True
     )
-    
-    def _get_default_currency(self):
-        """Obtiene la moneda por defecto del wizard"""
-        # Primero intentar obtener la moneda de la compañía
-        return self.env.company.currency_id
     
     balance = fields.Monetary(
         string='Saldo Actual',
@@ -60,21 +62,7 @@ class HotelPaymentWizard(models.TransientModel):
         required=True,
         currency_field='currency_id'
     )
-    
-    payment_method_id = fields.Many2one(
-        'pos.payment.method',
-        string='Método de Pago',
-        required=True,
-        domain=[('active', '=', True)]
-    )
-    
-    journal_id = fields.Many2one(
-        'account.journal',
-        string='Diario',
-        required=True,
-        domain=[('type', 'in', ['bank', 'cash'])]
-    )
-    
+
     payment_date = fields.Datetime(
         string='Fecha de Pago',
         required=True,
@@ -96,31 +84,7 @@ class HotelPaymentWizard(models.TransientModel):
         for wizard in self:
             if wizard.amount <= 0:
                 raise ValidationError(_('El monto debe ser mayor a cero'))
-    
-    @api.onchange('payment_method_id')
-    def _onchange_payment_method_id(self):
-        """Actualiza el diario basado en el método de pago"""
-        if self.payment_method_id:
-            # Buscar diario asociado al método de pago
-            if self.payment_method_id.journal_id:
-                self.journal_id = self.payment_method_id.journal_id
-            else:
-                # Buscar diario por tipo
-                company_id = self.reservation_id.company_id
-                if self.payment_method_id.type == 'cash':
-                    journal = self.env['account.journal'].search([
-                        ('type', '=', 'cash'),
-                        ('company_id', '=', company_id.id)
-                    ], limit=1)
-                else:
-                    journal = self.env['account.journal'].search([
-                        ('type', '=', 'bank'),
-                        ('company_id', '=', company_id.id)
-                    ], limit=1)
-                
-                if journal:
-                    self.journal_id = journal
-    
+
     def action_create_payment(self):
         """Crea el registro de pago con account.payment"""
         self.ensure_one()
@@ -131,18 +95,20 @@ class HotelPaymentWizard(models.TransientModel):
                 _('Solo se pueden registrar anticipos en reservas confirmadas o en casa')
             )
         
-        # Asegurar que currency_id esté configurado
-        if not self.currency_id:
-            raise UserError(_('Debe seleccionar una moneda para el pago'))
-        
+        # Asegurar que journal_id esté configurado
+        if not self.journal_id:
+            raise UserError(_('Debe seleccionar un diario para el pago'))
+
+        # Obtener moneda del diario o usar la de la compañía
+        currency_id = self.journal_id.currency_id.id if self.journal_id.currency_id else self.env.company.currency_id.id
+
         # Crear el anticipo en hotel.reservation.payment
         # Este modelo creará automáticamente el account.payment
         payment_vals = {
             'reservation_id': self.reservation_id.id,
             'name': self.memo,
             'amount': self.amount,
-            'currency_id': self.currency_id.id,
-            'payment_method_id': self.payment_method_id.id,
+            'currency_id': currency_id,
             'payment_date': self.payment_date,
             'journal_id': self.journal_id.id,
             'reference': self.reference,
@@ -150,18 +116,21 @@ class HotelPaymentWizard(models.TransientModel):
         
         # Crear el pago - esto automáticamente creará el account.payment
         payment = self.env['hotel.reservation.payment'].create(payment_vals)
-        
+
+        # Obtener moneda para mensaje
+        currency = self.env['res.currency'].browse(currency_id)
+
         # Mensaje de confirmación con información del payment creado
         if payment.account_payment_id:
             message = _('Anticipo registrado exitosamente: %s %s\nPago contable #%s creado y publicado') % (
                 self.amount,
-                self.currency_id.symbol,
+                currency.symbol,
                 payment.account_payment_id.name
             )
         else:
             message = _('Anticipo registrado exitosamente: %s %s') % (
                 self.amount,
-                self.currency_id.symbol
+                currency.symbol
             )
         
         return {

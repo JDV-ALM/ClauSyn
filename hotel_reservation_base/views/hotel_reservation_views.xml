@@ -92,14 +92,20 @@
                                 <tree create="false" delete="true">
                                     <field name="payment_date"/>
                                     <field name="name"/>
-                                    <field name="amount" sum="Total Anticipos"/>
+                                    <field name="journal_id" optional="show"/>
+                                    <field name="amount" widget="monetary" string="Monto Original"/>
                                     <field name="currency_id" column_invisible="1"/>
-                                    <field name="amount_reservation_currency" 
-                                           widget="monetary" 
-                                           sum="Total en Moneda Reserva"
-                                           optional="show"/>
-                                    <field name="reservation_currency_id" column_invisible="1"/>
-                                    <field name="payment_method_id"/>
+                                    <field name="alternative_currency_id" column_invisible="1"/>
+                                    <field name="amount_alt"
+                                           widget="monetary"
+                                           string="Monto (Mon. Alt)"
+                                           sum="Total en Moneda Alternativa"
+                                           optional="show"
+                                           invisible="not alternative_currency_id"/>
+                                    <field name="exchange_rate_at_payment"
+                                           string="Tasa Cambio"
+                                           optional="hide"
+                                           invisible="not alternative_currency_id"/>
                                     <field name="reference" optional="show"/>
                                     <field name="account_payment_id" optional="hide"/>
                                     <field name="is_applied" widget="boolean_toggle" readonly="1"/>
@@ -117,17 +123,60 @@
                     </notebook>
                     <group class="oe_subtotal_footer oe_right">
                         <field name="currency_id" invisible="1"/>
-                        <field name="charges_subtotal" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                        <field name="pos_charges_subtotal" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        <field name="alternative_currency_id" invisible="1"/>
+
+                        <!-- Totales en Moneda Alternativa (Principal) -->
+                        <div invisible="not alternative_currency_id" style="font-size: 14px; font-weight: bold;">
+                            <label for="amount_total_alt" string="TOTAL (DEUDA)"/>
+                        </div>
+                        <field name="amount_total_alt"
+                               nolabel="1"
+                               widget="monetary"
+                               options="{'currency_field': 'alternative_currency_id'}"
+                               invisible="not alternative_currency_id"
+                               style="font-size: 16px; font-weight: bold;"/>
+
+                        <div invisible="not alternative_currency_id" style="font-size: 14px; font-weight: bold; margin-top: 8px;">
+                            <label for="balance_alt" string="SALDO PENDIENTE"/>
+                        </div>
+                        <field name="balance_alt"
+                               nolabel="1"
+                               widget="monetary"
+                               options="{'currency_field': 'alternative_currency_id'}"
+                               invisible="not alternative_currency_id"
+                               style="font-size: 18px; font-weight: bold; color: #875A7B;"/>
+
+                        <!-- Separador visual -->
+                        <div invisible="not alternative_currency_id" style="margin-top: 16px; border-top: 1px solid #ddd; padding-top: 8px;">
+                            <i>Desglose en moneda de reserva:</i>
+                        </div>
+
+                        <!-- Totales en Moneda de Reserva (Secundario/Desglose) -->
+                        <field name="charges_subtotal"
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
+                               string="Cargos Manuales"/>
+                        <field name="pos_charges_subtotal"
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
+                               string="Consumos POS"/>
                         <div class="oe_subtotal_footer_separator oe_inline">
                             <label for="amount_total"/>
                         </div>
-                        <field name="amount_total" nolabel="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                        <field name="total_paid" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        <field name="amount_total"
+                               nolabel="1"
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"/>
+                        <field name="total_paid"
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"/>
                         <div class="oe_subtotal_footer_separator oe_inline">
                             <label for="balance"/>
                         </div>
-                        <field name="balance" nolabel="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        <field name="balance"
+                               nolabel="1"
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"/>
                     </group>
                 </sheet>
                 <div class="oe_chatter">
@@ -149,10 +198,31 @@
                 <field name="room_number"/>
                 <field name="checkin_date"/>
                 <field name="checkout_date"/>
-                <field name="amount_total" widget="monetary" sum="Total"/>
-                <field name="balance" widget="monetary" sum="Saldo Total"/>
                 <field name="currency_id" column_invisible="1"/>
-                <field name="state" widget="badge" 
+                <field name="alternative_currency_id" column_invisible="1"/>
+                <field name="amount_total_alt"
+                       widget="monetary"
+                       string="Total (Mon. Alt)"
+                       sum="Total"
+                       optional="show"
+                       invisible="not alternative_currency_id"/>
+                <field name="balance_alt"
+                       widget="monetary"
+                       string="Saldo (Mon. Alt)"
+                       sum="Saldo Total"
+                       optional="show"
+                       invisible="not alternative_currency_id"/>
+                <field name="amount_total"
+                       widget="monetary"
+                       string="Total"
+                       sum="Total"
+                       optional="hide"/>
+                <field name="balance"
+                       widget="monetary"
+                       string="Saldo"
+                       sum="Saldo Total"
+                       optional="hide"/>
+                <field name="state" widget="badge"
                        decoration-success="state == 'done'"
                        decoration-warning="state == 'checked_in'"
                        decoration-info="state == 'confirmed'"

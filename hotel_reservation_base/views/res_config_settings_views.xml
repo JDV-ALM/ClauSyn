@@ -11,20 +11,37 @@
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
                 <app data-string="Hotel" string="Hotel" name="hotel_reservation_base">
+                    <block title="Configuración General" name="hotel_general_setting">
+                        <setting id="alternative_hotel_currency" string="Moneda Alternativa" help="Configure la moneda de referencia para deudas y saldos del hotel">
+                            <div class="text-muted">
+                                Moneda de referencia para mostrar el valor real de las deudas en economías inflacionarias
+                            </div>
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <field name="alternative_hotel_currency_id"
+                                           options="{'no_create': True, 'no_open': True}"
+                                           placeholder="Ej: USD, EUR"/>
+                                </div>
+                                <div class="text-muted" invisible="not alternative_hotel_currency_id">
+                                    <i class="fa fa-info-circle"/> Los folios mostrarán deudas y saldos en esta moneda. Los pagos se registran en su moneda original y se convierten automáticamente.
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
                     <block title="Configuración Contable" name="hotel_accounting_setting">
                         <setting id="hotel_advance_account" string="Cuenta de Anticipos" help="Configure la cuenta contable donde se registrarán los anticipos de reservas">
                             <div class="text-muted">
-                                Define la cuenta de pasivo para registrar los anticipos recibidos de clientes antes de generar la factura
+                                Define la cuenta contable para registrar los anticipos recibidos de clientes antes de generar la factura
                             </div>
                             <div class="content-group">
                                 <div class="mt16">
                                     <field name="hotel_advance_account_id"
                                            options="{'no_create': True, 'no_open': True}"
                                            required="1"
-                                           domain="[('account_type', 'in', ['liability_current', 'liability_non_current']), ('deprecated', '=', False), ('company_id', '=', company_id)]"/>
+                                           domain="[('deprecated', '=', False), ('company_id', '=', company_id)]"/>
                                 </div>
                                 <div class="text-muted" invisible="not hotel_advance_account_id">
-                                    <i class="fa fa-info-circle"/> Los anticipos se registrarán en esta cuenta hasta que se genere la factura y se concilie el pago
+                                    <i class="fa fa-info-circle"/> Los anticipos se registrarán en esta cuenta hasta que se genere la factura y se concilie el pago. Se recomienda usar una cuenta de tipo Pasivo.
                                 </div>
                             </div>
                         </setting>

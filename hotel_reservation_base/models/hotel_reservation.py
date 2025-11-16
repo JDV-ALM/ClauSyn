@@ -158,7 +158,33 @@ class HotelReservation(models.Model):
         store=True,
         currency_field='currency_id'
     )
-    
+
+    # Moneda alternativa (para economías inflacionarias)
+    alternative_currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda Alternativa',
+        related='company_id.alternative_hotel_currency_id',
+        store=True,
+        readonly=True,
+        help='Moneda de referencia para mostrar el valor real de las deudas'
+    )
+
+    amount_total_alt = fields.Monetary(
+        string='Total (Alt)',
+        compute='_compute_amounts_alternative',
+        store=True,
+        currency_field='alternative_currency_id',
+        help='Total en moneda alternativa del hotel'
+    )
+
+    balance_alt = fields.Monetary(
+        string='Saldo (Alt)',
+        compute='_compute_amounts_alternative',
+        store=True,
+        currency_field='alternative_currency_id',
+        help='Saldo pendiente en moneda alternativa del hotel'
+    )
+
     # Otros campos
     company_id = fields.Many2one(
         'res.company',
@@ -204,7 +230,40 @@ class HotelReservation(models.Model):
 
             # Saldo
             reservation.balance = reservation.amount_total - reservation.total_paid
-    
+
+    @api.depends('amount_total', 'balance', 'currency_id', 'alternative_currency_id',
+                 'payment_ids.amount_alt')
+    def _compute_amounts_alternative(self):
+        """Calcula montos en moneda alternativa del hotel"""
+        for reservation in self:
+            # Si no hay moneda alternativa configurada, usar valores en cero
+            if not reservation.alternative_currency_id:
+                reservation.amount_total_alt = 0.0
+                reservation.balance_alt = 0.0
+                continue
+
+            # Si la moneda de la reserva es la misma que la alternativa, usar valores directos
+            if reservation.currency_id == reservation.alternative_currency_id:
+                reservation.amount_total_alt = reservation.amount_total
+                reservation.balance_alt = reservation.balance
+            else:
+                # Convertir total a moneda alternativa
+                reservation.amount_total_alt = reservation.currency_id._convert(
+                    reservation.amount_total,
+                    reservation.alternative_currency_id,
+                    reservation.company_id,
+                    fields.Date.today()
+                )
+
+                # Calcular total pagado en moneda alternativa
+                # Sumar todos los pagos ya convertidos a moneda alternativa
+                total_paid_alt = sum(
+                    payment.amount_alt for payment in reservation.payment_ids
+                )
+
+                # Saldo en moneda alternativa
+                reservation.balance_alt = reservation.amount_total_alt - total_paid_alt
+
     # Secuencia
     @api.model_create_multi
     def create(self, vals_list):

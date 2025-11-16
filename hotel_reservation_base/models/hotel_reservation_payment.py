@@ -40,14 +40,7 @@ class HotelReservationPayment(models.Model):
         required=True,
         default=lambda self: self.env.company.currency_id
     )
-    
-    payment_method_id = fields.Many2one(
-        'pos.payment.method',
-        string='Método de Pago',
-        required=True,
-        domain=[('active', '=', True)]
-    )
-    
+
     payment_date = fields.Datetime(
         string='Fecha de Pago',
         required=True,
@@ -125,7 +118,33 @@ class HotelReservationPayment(models.Model):
         store=True,
         readonly=True
     )
-    
+
+    # Campos para moneda alternativa del hotel
+    alternative_currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda Alternativa',
+        related='company_id.alternative_hotel_currency_id',
+        store=True,
+        readonly=True,
+        help='Moneda de referencia del hotel para economías inflacionarias'
+    )
+
+    amount_alt = fields.Monetary(
+        string='Monto (Moneda Alt)',
+        compute='_compute_amount_alternative',
+        store=True,
+        currency_field='alternative_currency_id',
+        help='Monto del pago convertido a la moneda alternativa del hotel al tipo de cambio del momento del pago'
+    )
+
+    exchange_rate_at_payment = fields.Float(
+        string='Tasa de Cambio',
+        compute='_compute_amount_alternative',
+        store=True,
+        digits=(12, 6),
+        help='Tasa de cambio usada para convertir a moneda alternativa'
+    )
+
     @api.depends('amount', 'currency_id', 'reservation_currency_id', 'payment_date')
     def _compute_amount_reservation_currency(self):
         """Calcula el monto en la moneda de la reserva"""
@@ -143,7 +162,41 @@ class HotelReservationPayment(models.Model):
                     )
             else:
                 payment.amount_reservation_currency = payment.amount
-    
+
+    @api.depends('amount', 'currency_id', 'alternative_currency_id', 'payment_date')
+    def _compute_amount_alternative(self):
+        """Calcula el monto en moneda alternativa del hotel"""
+        for payment in self:
+            # Si no hay moneda alternativa configurada, usar valores en cero
+            if not payment.alternative_currency_id:
+                payment.amount_alt = 0.0
+                payment.exchange_rate_at_payment = 0.0
+                continue
+
+            # Si la moneda del pago es la misma que la alternativa, no hay conversión
+            if payment.currency_id == payment.alternative_currency_id:
+                payment.amount_alt = payment.amount
+                payment.exchange_rate_at_payment = 1.0
+            else:
+                # Convertir a moneda alternativa
+                payment_date = payment.payment_date.date() if payment.payment_date else fields.Date.today()
+
+                # Calcular tasa de cambio
+                payment.exchange_rate_at_payment = payment.currency_id._get_conversion_rate(
+                    payment.currency_id,
+                    payment.alternative_currency_id,
+                    payment.company_id,
+                    payment_date
+                )
+
+                # Convertir monto
+                payment.amount_alt = payment.currency_id._convert(
+                    payment.amount,
+                    payment.alternative_currency_id,
+                    payment.company_id,
+                    payment_date
+                )
+
     @api.constrains('amount')
     def _check_amount(self):
         for payment in self:
@@ -285,30 +338,7 @@ class HotelReservationPayment(models.Model):
                 payment.account_payment_id.unlink()
         
         return super().unlink()
-    
-    @api.onchange('payment_method_id')
-    def _onchange_payment_method_id(self):
-        """Actualiza el diario basado en el método de pago"""
-        if self.payment_method_id:
-            # Buscar diario asociado al método de pago
-            if self.payment_method_id.journal_id:
-                self.journal_id = self.payment_method_id.journal_id
-            else:
-                # Buscar diario por tipo
-                if self.payment_method_id.type == 'cash':
-                    journal = self.env['account.journal'].search([
-                        ('type', '=', 'cash'),
-                        ('company_id', '=', self.company_id.id)
-                    ], limit=1)
-                else:
-                    journal = self.env['account.journal'].search([
-                        ('type', '=', 'bank'),
-                        ('company_id', '=', self.company_id.id)
-                    ], limit=1)
-                
-                if journal:
-                    self.journal_id = journal
-    
+
     def action_apply_to_checkout(self):
         """Marca el anticipo como aplicado (será usado en el checkout)"""
         self.ensure_one()
