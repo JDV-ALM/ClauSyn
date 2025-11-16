@@ -12,8 +12,9 @@ class ResCompany(models.Model):
     hotel_advance_account_id = fields.Many2one(
         'account.account',
         string='Cuenta de Anticipos de Hotel',
-        domain="[('deprecated', '=', False), ('company_id', '=', id)]",
-        help='Cuenta contable para registrar los anticipos de reservas hoteleras. Se recomienda usar una cuenta de tipo Pasivo.'
+        domain="[('deprecated', '=', False), ('company_id', '=', id), ('reconcile', '=', True)]",
+        help='Cuenta contable para registrar los anticipos de reservas hoteleras. '
+             'IMPORTANTE: Debe ser una cuenta reconciliable de tipo Pasivo (ej: Pasivo Corriente).'
     )
 
     alternative_hotel_currency_id = fields.Many2one(
@@ -33,8 +34,10 @@ class ResConfigSettings(models.TransientModel):
         string='Cuenta de Anticipos',
         related='company_id.hotel_advance_account_id',
         readonly=False,
-        domain="[('deprecated', '=', False), ('company_id', '=', company_id)]",
-        help='Cuenta contable para registrar los anticipos recibidos de clientes. Se recomienda usar una cuenta de tipo Pasivo. Esta cuenta se usará hasta que se genere la factura y se concilie el pago.'
+        domain="[('deprecated', '=', False), ('company_id', '=', company_id), ('reconcile', '=', True)]",
+        help='Cuenta contable para registrar los anticipos recibidos de clientes. '
+             'IMPORTANTE: Debe ser una cuenta reconciliable de tipo Pasivo (ej: Pasivo Corriente). '
+             'Esta cuenta se usará hasta que se genere la factura y se concilie el pago.'
     )
 
     alternative_hotel_currency_id = fields.Many2one(
@@ -54,6 +57,12 @@ class ResConfigSettings(models.TransientModel):
             if record.hotel_advance_account_id:
                 if record.hotel_advance_account_id.deprecated:
                     raise ValidationError(_('No se puede usar una cuenta deprecada para anticipos'))
+                # IMPORTANTE: La cuenta debe ser reconciliable para que funcione con account.payment
+                if not record.hotel_advance_account_id.reconcile:
+                    raise ValidationError(_(
+                        'La cuenta de anticipos "%s" debe ser reconciliable. '
+                        'Por favor active la opción "Permitir Conciliación" en la configuración de la cuenta.'
+                    ) % record.hotel_advance_account_id.display_name)
     
     @api.model
     def get_values(self):

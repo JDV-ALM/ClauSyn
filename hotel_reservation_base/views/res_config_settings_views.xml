@@ -38,10 +38,13 @@
                                     <field name="hotel_advance_account_id"
                                            options="{'no_create': True, 'no_open': True}"
                                            required="1"
-                                           domain="[('deprecated', '=', False), ('company_id', '=', company_id)]"/>
+                                           domain="[('deprecated', '=', False), ('company_id', '=', company_id), ('reconcile', '=', True)]"/>
                                 </div>
                                 <div class="text-muted" invisible="not hotel_advance_account_id">
-                                    <i class="fa fa-info-circle"/> Los anticipos se registrarán en esta cuenta hasta que se genere la factura y se concilie el pago. Se recomienda usar una cuenta de tipo Pasivo.
+                                    <i class="fa fa-info-circle"/> Los anticipos se registrarán en esta cuenta hasta que se genere la factura y se concilie el pago.
+                                </div>
+                                <div class="text-warning" invisible="not hotel_advance_account_id">
+                                    <i class="fa fa-warning"/> IMPORTANTE: La cuenta debe ser reconciliable y de tipo Pasivo (ej: Pasivo Corriente).
                                 </div>
                             </div>
                         </setting>

@@ -29,31 +29,46 @@ class AccountPayment(models.Model):
             write_off_line_vals=write_off_line_vals,
             force_balance=force_balance
         )
-        
+
         # Si es un anticipo de hotel, modificar la cuenta destino
         if self.is_hotel_advance:
             # Obtener la cuenta de anticipos configurada
             advance_account = self.company_id.hotel_advance_account_id
-            
+
             if not advance_account:
                 raise UserError(_(
                     'No se ha configurado la cuenta de anticipos de hotel. '
                     'Por favor configure la cuenta en Configuración > Hotel > Cuenta de Anticipos'
                 ))
-            
-            # Buscar la línea de la cuenta destino (receivable/payable) y cambiarla
+
+            # Obtener la cuenta de liquidez del diario (banco o caja)
+            liquidity_account = self.journal_id.default_account_id
+
+            # Buscar y reemplazar la línea de contrapartida
+            # En un pago, hay 2 líneas:
+            #   1. Línea de liquidez (cuenta del diario - banco/caja)
+            #   2. Línea de contrapartida (cuenta receivable/payable del partner)
             for line_vals in line_vals_list:
-                # La línea de destino es la que NO es la cuenta del diario
-                if line_vals.get('account_id') != self.journal_id.default_account_id.id:
+                # La línea que NO es la cuenta de liquidez es la que debemos reemplazar
+                if line_vals.get('account_id') != liquidity_account.id:
                     # Reemplazar con la cuenta de anticipos
                     line_vals['account_id'] = advance_account.id
                     line_vals['name'] = _('Anticipo de Reserva - %s') % (
-                        self.hotel_reservation_payment_id.reservation_id.name 
+                        self.hotel_reservation_payment_id.reservation_id.name
                         if self.hotel_reservation_payment_id else self.ref
                     )
-        
+
         return line_vals_list
     
+    def _check_balanced(self):
+        """Override para permitir anticipos con cuenta personalizada"""
+        # Para anticipos de hotel, NO validar que haya cuenta receivable/payable
+        # porque usamos una cuenta de pasivo (anticipos) diferente
+        if not self.is_hotel_advance:
+            return super()._check_balanced()
+        # Para anticipos, solo verificar que esté balanceado
+        return True
+
     def action_post(self):
         """Override para validaciones adicionales de anticipos"""
         for payment in self:
@@ -62,7 +77,7 @@ class AccountPayment(models.Model):
                     'No se puede publicar el anticipo sin una cuenta de anticipos configurada. '
                     'Configure la cuenta en Configuración > Hotel'
                 ))
-        
+
         return super().action_post()
     
     def _synchronize_from_moves(self, changed_fields):

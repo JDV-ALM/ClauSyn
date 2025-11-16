@@ -283,9 +283,9 @@ class HotelReservationPayment(models.Model):
             'date': self.payment_date.date() if self.payment_date else fields.Date.today(),
             'journal_id': self.journal_id.id,
             'payment_method_line_id': payment_method_line.id,
-            'destination_account_id': destination_account.id,
             'ref': ref_text,
             # Campos específicos para anticipos de hotel (definidos en account_payment.py)
+            # NO establecer destination_account_id aquí - el override en account_payment.py lo maneja
             'is_hotel_advance': True,
             'hotel_reservation_payment_id': self.id,
         }
