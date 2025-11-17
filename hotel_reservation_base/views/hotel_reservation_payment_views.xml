@@ -27,13 +27,14 @@
                        invisible="not alternative_currency_id"/>
                 <field name="journal_id" optional="show"/>
                 <field name="reference" optional="show"/>
-                <field name="account_move_id" optional="hide"/>
+                <field name="state" optional="show" widget="badge" decoration-success="state == 'posted'" decoration-muted="state == 'cancel'"/>
+                <field name="account_payment_id" optional="hide"/>
                 <field name="is_applied" widget="boolean_toggle" readonly="1"/>
-                <button name="action_view_account_move"
+                <button name="action_view_account_payment"
                         type="object"
                         icon="fa-external-link"
-                        string="Ver Asiento"
-                        invisible="not account_move_id"/>
+                        string="Ver Pago"
+                        invisible="not account_payment_id"/>
             </tree>
         </field>
     </record>
@@ -45,21 +46,27 @@
         <field name="arch" type="xml">
             <form string="Anticipo">
                 <header>
+                    <button name="action_cancel"
+                            string="Cancelar"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state != 'posted'"
+                            confirm="¿Está seguro que desea cancelar este anticipo? Esto cancelará el pago contable asociado."/>
                     <button name="action_apply_to_checkout"
                             string="Aplicar al Checkout"
                             type="object"
                             class="btn-primary"
-                            invisible="is_applied or state not in ['checked_in']"/>
-                    <field name="is_applied" widget="boolean_toggle" readonly="1"/>
+                            invisible="is_applied or reservation_state not in ['checked_in']"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_view_account_move"
+                        <button name="action_view_account_payment"
                                 type="object"
                                 class="oe_stat_button"
-                                icon="fa-book"
-                                invisible="not account_move_id">
-                            <field name="account_move_id" widget="statinfo" string="Asiento Contable"/>
+                                icon="fa-credit-card"
+                                invisible="not account_payment_id">
+                            <field name="account_payment_id" widget="statinfo" string="Pago Contable"/>
                         </button>
                     </div>
                     <div class="oe_title">
@@ -72,7 +79,7 @@
                             <field name="reservation_id" readonly="1"/>
                             <field name="partner_id"/>
                             <field name="room_number"/>
-                            <field name="state" invisible="1"/>
+                            <field name="reservation_state" invisible="1"/>
                         </group>
                         <group>
                             <field name="amount" widget="monetary" readonly="1" string="Monto Pagado"/>
@@ -98,7 +105,7 @@
                         </group>
                         <group>
                             <field name="company_id" groups="base.group_multi_company" readonly="1"/>
-                            <field name="account_move_id" readonly="1"/>
+                            <field name="account_payment_id" readonly="1"/>
                         </group>
                     </group>
                 </sheet>
