@@ -120,12 +120,12 @@ class HotelPaymentWizard(models.TransientModel):
         # Obtener moneda para mensaje
         currency = self.env['res.currency'].browse(currency_id)
 
-        # Mensaje de confirmación con información del payment creado
-        if payment.account_payment_id:
-            message = _('Anticipo registrado exitosamente: %s %s\nPago contable #%s creado y publicado') % (
+        # Mensaje de confirmación con información del asiento creado
+        if payment.account_move_id:
+            message = _('Anticipo registrado exitosamente: %s %s\nAsiento contable #%s creado y publicado') % (
                 self.amount,
                 currency.symbol,
-                payment.account_payment_id.name
+                payment.account_move_id.name
             )
         else:
             message = _('Anticipo registrado exitosamente: %s %s') % (

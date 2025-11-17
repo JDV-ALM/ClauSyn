@@ -54,13 +54,14 @@ class HotelReservationPayment(models.Model):
         required=True,
         domain=[('type', 'in', ['bank', 'cash'])]
     )
-    
-    account_payment_id = fields.Many2one(
-        'account.payment',
-        string='Pago Contable',
+
+    account_move_id = fields.Many2one(
+        'account.move',
+        string='Asiento Contable',
         readonly=True,
         copy=False,
-        ondelete='restrict'
+        ondelete='restrict',
+        help='Asiento contable del anticipo'
     )
     
     reference = fields.Char(
@@ -205,13 +206,13 @@ class HotelReservationPayment(models.Model):
     
     @api.model_create_multi
     def create(self, vals_list):
-        """Override create para crear automáticamente el account.payment"""
+        """Override create para crear automáticamente el asiento contable"""
         payments = super().create(vals_list)
-        
+
         for payment in payments:
-            # Crear el account.payment automáticamente
-            payment.create_account_payment()
-            
+            # Crear el asiento contable automáticamente
+            payment.create_account_move()
+
             # Notificar
             payment.reservation_id.message_post(
                 body=_('Anticipo registrado: %s %s') % (
@@ -219,54 +220,33 @@ class HotelReservationPayment(models.Model):
                     payment.currency_id.symbol
                 )
             )
-        
+
         return payments
     
-    def create_account_payment(self):
-        """Crea el account.payment del anticipo"""
+    def create_account_move(self):
+        """Crea el asiento contable del anticipo directamente"""
         self.ensure_one()
-        
-        if self.account_payment_id:
-            raise UserError(_('Este anticipo ya tiene un pago contable asociado'))
-        
+
+        if self.account_move_id:
+            raise UserError(_('Este anticipo ya tiene un asiento contable asociado'))
+
         # Validar que la cuenta de anticipos esté configurada
         if not self.company_id.hotel_advance_account_id:
             raise UserError(_(
                 'No se ha configurado la cuenta de anticipos de hotel. '
                 'Por favor vaya a Configuración > Hotel y configure la cuenta de anticipos.'
             ))
-        
-        # Determinar tipo de pago
-        payment_type = 'inbound'  # Recibimos dinero del cliente
-        partner_type = 'customer'
-        
-        # Para anticipos, usamos la cuenta de anticipos configurada
-        # El override en account.payment se encargará de usar esta cuenta
-        destination_account = self.company_id.hotel_advance_account_id
-        
-        # Buscar método de pago en account.payment.method
-        payment_method = self.env['account.payment.method'].search([
-            ('payment_type', '=', payment_type),
-            ('code', '=', 'manual'),  # Método manual por defecto
-        ], limit=1)
-        
-        if not payment_method:
-            raise UserError(_('No se encontró método de pago manual'))
-        
-        # Buscar o crear la línea del método de pago
-        payment_method_line = self.env['account.payment.method.line'].search([
-            ('payment_method_id', '=', payment_method.id),
-            ('journal_id', '=', self.journal_id.id),
-        ], limit=1)
-        
-        if not payment_method_line:
-            # Crear la línea del método de pago si no existe
-            payment_method_line = self.env['account.payment.method.line'].create({
-                'payment_method_id': payment_method.id,
-                'journal_id': self.journal_id.id,
-            })
-        
-        # Preparar valores del payment
+
+        # Obtener cuentas
+        advance_account = self.company_id.hotel_advance_account_id
+        liquidity_account = self.journal_id.default_account_id
+
+        if not liquidity_account:
+            raise UserError(_(
+                'El diario "%s" no tiene una cuenta por defecto configurada.'
+            ) % self.journal_id.name)
+
+        # Preparar referencia
         ref_text = _('Anticipo - Reserva %s - Hab. %s') % (
             self.reservation_id.name,
             self.room_number
@@ -274,72 +254,88 @@ class HotelReservationPayment(models.Model):
         if self.reference:
             ref_text += _(' - Ref: %s') % self.reference
 
-        payment_vals = {
-            'payment_type': payment_type,
-            'partner_type': partner_type,
+        # Preparar líneas del asiento
+        line_vals = []
+
+        # Línea 1: DÉBITO en cuenta de liquidez (banco/caja)
+        line_vals.append((0, 0, {
+            'name': ref_text,
+            'account_id': liquidity_account.id,
             'partner_id': self.partner_id.id,
-            'amount': self.amount,
-            'currency_id': self.currency_id.id,
+            'debit': self.amount,
+            'credit': 0.0,
+            'currency_id': self.currency_id.id if self.currency_id != self.company_id.currency_id else False,
+            'amount_currency': self.amount if self.currency_id != self.company_id.currency_id else 0.0,
+        }))
+
+        # Línea 2: CRÉDITO en cuenta de anticipos
+        line_vals.append((0, 0, {
+            'name': ref_text,
+            'account_id': advance_account.id,
+            'partner_id': self.partner_id.id,
+            'debit': 0.0,
+            'credit': self.amount,
+            'currency_id': self.currency_id.id if self.currency_id != self.company_id.currency_id else False,
+            'amount_currency': -self.amount if self.currency_id != self.company_id.currency_id else 0.0,
+        }))
+
+        # Crear el asiento
+        move_vals = {
+            'move_type': 'entry',
             'date': self.payment_date.date() if self.payment_date else fields.Date.today(),
             'journal_id': self.journal_id.id,
-            'payment_method_line_id': payment_method_line.id,
             'ref': ref_text,
-            # Campos específicos para anticipos de hotel (definidos en account_payment.py)
-            # NO establecer destination_account_id aquí - el override en account_payment.py lo maneja
-            'is_hotel_advance': True,
-            'hotel_reservation_payment_id': self.id,
+            'line_ids': line_vals,
         }
-        
-        # Crear el payment
-        account_payment = self.env['account.payment'].create(payment_vals)
-        
-        # Publicar el payment (esto crea el asiento contable)
-        # El payment queda publicado pero NO conciliado
-        account_payment.action_post()
-        
-        # Vincular el payment con este anticipo
-        self.account_payment_id = account_payment
-        
-        return account_payment
+
+        account_move = self.env['account.move'].create(move_vals)
+
+        # Publicar el asiento
+        account_move.action_post()
+
+        # Vincular el asiento con este anticipo
+        self.account_move_id = account_move
+
+        return account_move
     
-    def action_view_account_payment(self):
-        """Abre el account.payment relacionado"""
+    def action_view_account_move(self):
+        """Abre el asiento contable relacionado"""
         self.ensure_one()
-        if not self.account_payment_id:
-            raise UserError(_('Este anticipo no tiene pago contable'))
-        
+        if not self.account_move_id:
+            raise UserError(_('Este anticipo no tiene asiento contable'))
+
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Pago Contable'),
-            'res_model': 'account.payment',
-            'res_id': self.account_payment_id.id,
+            'name': _('Asiento Contable'),
+            'res_model': 'account.move',
+            'res_id': self.account_move_id.id,
             'view_mode': 'form',
             'target': 'current'
         }
     
     def unlink(self):
-        """Override unlink para validar y cancelar payment"""
+        """Override unlink para validar y cancelar asiento"""
         for payment in self:
             if payment.is_applied:
                 raise UserError(_('No se puede eliminar un anticipo ya aplicado'))
-            
+
             if payment.reservation_id.state not in ['confirmed', 'checked_in']:
                 raise UserError(
-                    _('No se pueden eliminar anticipos de una reserva en estado %s') % 
+                    _('No se pueden eliminar anticipos de una reserva en estado %s') %
                     payment.reservation_id.state
                 )
-            
-            # Cancelar y eliminar el account.payment si existe
-            if payment.account_payment_id:
-                # Si el payment está publicado, primero lo cancelamos
-                if payment.account_payment_id.state == 'posted':
-                    payment.account_payment_id.action_cancel()
-                # Si el payment está conciliado, no permitir eliminar
-                if payment.account_payment_id.is_reconciled:
-                    raise UserError(_('No se puede eliminar un anticipo con pago conciliado'))
-                # Eliminar el payment
-                payment.account_payment_id.unlink()
-        
+
+            # Cancelar y eliminar el asiento contable si existe
+            if payment.account_move_id:
+                # Si el asiento está publicado, primero lo cancelamos
+                if payment.account_move_id.state == 'posted':
+                    payment.account_move_id.button_draft()
+                # Si el asiento está conciliado, no permitir eliminar
+                if payment.account_move_id.line_ids.filtered(lambda l: l.reconciled):
+                    raise UserError(_('No se puede eliminar un anticipo con asiento conciliado'))
+                # Eliminar el asiento
+                payment.account_move_id.unlink()
+
         return super().unlink()
 
     def action_apply_to_checkout(self):
