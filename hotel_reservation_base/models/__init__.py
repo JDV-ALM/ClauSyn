@@ -4,6 +4,8 @@
 
 from . import hotel_reservation
 from . import hotel_reservation_line
+from . import hotel_reservation_pms_line
+from . import hotel_reservation_guest
 from . import hotel_reservation_payment
 from . import account_payment  # Necesario para modificar cuenta receivable → anticipos
 from . import pos_order

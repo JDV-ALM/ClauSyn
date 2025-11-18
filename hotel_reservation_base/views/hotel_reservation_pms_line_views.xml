@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Desarrollado por Almus Dev (JDV-ALM) - www.almus.dev -->
+<odoo>
+
+    <!-- Vista de formulario para líneas PMS (solo lectura) -->
+    <record id="view_hotel_reservation_pms_line_form" model="ir.ui.view">
+        <field name="name">hotel.reservation.pms.line.form</field>
+        <field name="model">hotel.reservation.pms.line</field>
+        <field name="arch" type="xml">
+            <form string="Línea de Consumo PMS" create="false" delete="false" edit="false">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_view_reservation" icon="fa-bed" invisible="not reservation_id">
+                            <field name="reservation_id" widget="statinfo" string="Reserva"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="product_id"/>
+                            <field name="quantity"/>
+                            <field name="price_unit" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        </group>
+                        <group>
+                            <field name="date"/>
+                            <field name="user_id"/>
+                            <field name="pms_reference"/>
+                            <field name="pms_sync_date"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="tax_ids" widget="many2many_tags"/>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="price_subtotal" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="price_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista de árbol para líneas PMS (solo lectura) -->
+    <record id="view_hotel_reservation_pms_line_tree" model="ir.ui.view">
+        <field name="name">hotel.reservation.pms.line.tree</field>
+        <field name="model">hotel.reservation.pms.line</field>
+        <field name="arch" type="xml">
+            <tree string="Consumos PMS" create="false" delete="false" edit="false">
+                <field name="date"/>
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="quantity"/>
+                <field name="price_unit" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="price_subtotal" sum="Subtotal" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="pms_reference"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Acción para ver líneas PMS -->
+    <record id="action_hotel_reservation_pms_line" model="ir.actions.act_window">
+        <field name="name">Consumos PMS</field>
+        <field name="res_model">hotel.reservation.pms.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay consumos del PMS
+            </p>
+            <p>
+                Los consumos del PMS se sincronizan automáticamente desde el sistema externo.
+            </p>
+        </field>
+    </record>
+
+</odoo>

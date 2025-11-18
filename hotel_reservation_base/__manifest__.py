@@ -3,9 +3,9 @@
 # www.almus.dev
 {
     'name': 'Hotel Reservation Base',
-    'version': '17.0.1.1.0',
+    'version': '17.0.1.2.0',
     'category': 'Hotel',
-    'summary': 'Sistema base de gestión de reservas hoteleras con soporte para moneda alternativa',
+    'summary': 'Sistema base de gestión de reservas hoteleras con soporte PMS y múltiples huéspedes',
     'description': """
         Módulo base que gestiona el ciclo de vida de las reservas hoteleras.
         Funciona como contenedor central de todos los consumos y pagos durante
@@ -13,9 +13,12 @@
 
         Características principales:
         - Gestión completa del ciclo de reservas
-        - Registro de consumos manuales
+        - Gestión de múltiples huéspedes por reserva
+        - Registro de consumos manuales (en moneda de resguardo)
+        - Integración con sistema PMS externo
         - Control de anticipos y pagos parciales
         - Cálculo automático de saldos
+        - Sistema de bloqueo/desbloqueo de reservas
         - Integración con contabilidad
         - Sistema de moneda alternativa para economías inflacionarias
         - Conversión automática de pagos con tasas históricas
@@ -43,7 +46,9 @@
         
         # Views
         'views/hotel_reservation_views.xml',
-        'views/hotel_reservation_line_views.xml', 
+        'views/hotel_reservation_line_views.xml',
+        'views/hotel_reservation_pms_line_views.xml',
+        'views/hotel_reservation_guest_views.xml',
         'views/hotel_reservation_payment_views.xml',
         'views/res_config_settings_views.xml',
         'views/menuitems.xml',

@@ -32,18 +32,31 @@ class HotelReservation(models.Model):
 
     room_number = fields.Char(
         string='Número/Nombre de Habitación',
-        required=True,
         tracking=True,
-        help='Identificador físico de la habitación'
+        help='Identificador físico de la habitación principal'
     )
-    
+
+    pms_reservation_number = fields.Char(
+        string='Número de Reserva PMS',
+        tracking=True,
+        help='Número de reserva en el sistema PMS externo',
+        index=True
+    )
+
+    is_locked = fields.Boolean(
+        string='Bloqueada',
+        default=False,
+        tracking=True,
+        help='Cuando está bloqueada, solo administradores pueden modificar ciertos campos'
+    )
+
     checkin_date = fields.Datetime(
         string='Check-in Previsto',
         required=True,
         tracking=True,
         default=lambda self: fields.Datetime.now()
     )
-    
+
     checkout_date = fields.Datetime(
         string='Check-out Previsto',
         required=True,
@@ -89,13 +102,27 @@ class HotelReservation(models.Model):
         'reservation_id',
         string='Cargos Manuales'
     )
-    
+
+    pms_line_ids = fields.One2many(
+        'hotel.reservation.pms.line',
+        'reservation_id',
+        string='Consumos PMS',
+        help='Consumos sincronizados desde el sistema PMS externo'
+    )
+
+    guest_ids = fields.One2many(
+        'hotel.reservation.guest',
+        'reservation_id',
+        string='Huéspedes',
+        help='Huéspedes adicionales de la reserva'
+    )
+
     payment_ids = fields.One2many(
         'hotel.reservation.payment',
         'reservation_id',
         string='Anticipos'
     )
-    
+
     pos_order_ids = fields.One2many(
         'pos.order',
         'hotel_reservation_id',
@@ -129,14 +156,21 @@ class HotelReservation(models.Model):
         store=True,
         currency_field='currency_id'
     )
-    
+
+    pms_charges_subtotal = fields.Monetary(
+        string='Subtotal Consumos PMS',
+        compute='_compute_amounts',
+        store=True,
+        currency_field='currency_id'
+    )
+
     pos_charges_subtotal = fields.Monetary(
         string='Subtotal Consumos POS',
         compute='_compute_amounts',
         store=True,
         currency_field='currency_id'
     )
-    
+
     amount_total = fields.Monetary(
         string='Total',
         compute='_compute_amounts',
@@ -204,12 +238,15 @@ class HotelReservation(models.Model):
         for reservation in self:
             reservation.pos_order_count = len(reservation.pos_order_ids)
     
-    @api.depends('line_ids.price_subtotal', 'payment_ids.amount',
-                 'pos_order_ids.amount_total')
+    @api.depends('line_ids.price_subtotal', 'pms_line_ids.price_subtotal',
+                 'payment_ids.amount', 'pos_order_ids.amount_total')
     def _compute_amounts(self):
         for reservation in self:
-            # Subtotal cargos manuales
+            # Subtotal cargos manuales (en moneda de resguardo)
             reservation.charges_subtotal = sum(line.price_subtotal for line in reservation.line_ids)
+
+            # Subtotal consumos PMS (siempre en moneda de resguardo)
+            reservation.pms_charges_subtotal = sum(line.price_subtotal for line in reservation.pms_line_ids)
 
             # Subtotal órdenes POS
             reservation.pos_charges_subtotal = sum(
@@ -217,9 +254,10 @@ class HotelReservation(models.Model):
                 if order.state in ['paid', 'done', 'invoiced']
             )
 
-            # Total general (solo cargos manuales + POS)
+            # Total general (cargos manuales + PMS + POS)
             reservation.amount_total = (
                 reservation.charges_subtotal +
+                reservation.pms_charges_subtotal +
                 reservation.pos_charges_subtotal
             )
 
@@ -291,12 +329,13 @@ class HotelReservation(models.Model):
         for reservation in self:
             if reservation.state != 'confirmed':
                 raise UserError(_('Solo se puede hacer check-in de reservas confirmadas'))
-            
+
             reservation.write({
                 'state': 'checked_in',
-                'checkin_real': fields.Datetime.now()
+                'checkin_real': fields.Datetime.now(),
+                'is_locked': True  # Bloquear automáticamente al hacer check-in
             })
-            reservation.message_post(body=_('Check-in realizado'))
+            reservation.message_post(body=_('Check-in realizado - Reserva bloqueada automáticamente'))
     
     def action_check_out(self):
         """Inicia proceso de checkout - NOMBRE CORREGIDO"""
@@ -367,13 +406,29 @@ class HotelReservation(models.Model):
             }
         }
     
+    def action_lock(self):
+        """Bloquea la reserva para evitar modificaciones"""
+        for reservation in self:
+            reservation.is_locked = True
+            reservation.message_post(body=_('Reserva bloqueada'))
+
+    def action_unlock(self):
+        """Desbloquea la reserva para permitir modificaciones (solo administradores)"""
+        # Verificar que el usuario sea administrador
+        if not self.env.user.has_group('hotel_reservation_base.group_hotel_manager'):
+            raise UserError(_('Solo los administradores pueden desbloquear reservas'))
+
+        for reservation in self:
+            reservation.is_locked = False
+            reservation.message_post(body=_('Reserva desbloqueada por %s') % self.env.user.name)
+
     @api.constrains('checkin_date', 'checkout_date')
     def _check_dates(self):
         for reservation in self:
             if reservation.checkin_date and reservation.checkout_date:
                 if reservation.checkin_date >= reservation.checkout_date:
                     raise ValidationError(_('La fecha de checkout debe ser posterior al checkin'))
-    
+
     def unlink(self):
         for reservation in self:
             if reservation.state not in ['draft', 'cancelled']:

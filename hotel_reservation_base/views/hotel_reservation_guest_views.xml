@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Desarrollado por Almus Dev (JDV-ALM) - www.almus.dev -->
+<odoo>
+
+    <!-- Vista de formulario para huéspedes -->
+    <record id="view_hotel_reservation_guest_form" model="ir.ui.view">
+        <field name="name">hotel.reservation.guest.form</field>
+        <field name="model">hotel.reservation.guest</field>
+        <field name="arch" type="xml">
+            <form string="Huésped de Reserva">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="partner_id" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                            <field name="room_number" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                            <field name="adults" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                            <field name="children" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                        </group>
+                        <group>
+                            <field name="checkin_date" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                            <field name="checkout_date" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                            <field name="state" invisible="1"/>
+                            <field name="is_locked" invisible="1"/>
+                            <field name="sequence"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="notes" placeholder="Notas específicas sobre este huésped..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista de árbol para huéspedes (editable) -->
+    <record id="view_hotel_reservation_guest_tree" model="ir.ui.view">
+        <field name="name">hotel.reservation.guest.tree</field>
+        <field name="model">hotel.reservation.guest</field>
+        <field name="arch" type="xml">
+            <tree string="Huéspedes" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="partner_id" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                <field name="room_number" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                <field name="adults" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                <field name="children" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                <field name="checkin_date" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                <field name="checkout_date" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                <field name="state" invisible="1"/>
+                <field name="is_locked" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+</odoo>

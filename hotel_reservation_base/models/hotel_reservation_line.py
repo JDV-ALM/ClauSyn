@@ -41,22 +41,8 @@ class HotelReservationLine(models.Model):
     price_unit = fields.Monetary(
         string='Precio Unitario',
         required=True,
-        currency_field='price_currency_id'
-    )
-    
-    price_currency_id = fields.Many2one(
-        'res.currency',
-        string='Moneda del Precio',
-        default=lambda self: self.env.company.currency_id,
-        help='Moneda del precio unitario'
-    )
-    
-    currency_rate = fields.Float(
-        string='Tasa de Cambio',
-        compute='_compute_currency_rate',
-        store=True,
-        digits=(12, 6),
-        help='Tasa de cambio al momento del registro'
+        currency_field='currency_id',
+        help='Precio unitario en moneda de resguardo'
     )
     
     tax_ids = fields.Many2many(
@@ -127,54 +113,24 @@ class HotelReservationLine(models.Model):
         readonly=True,
         store=True
     )
-    
+
     state = fields.Selection(
         related='reservation_id.state',
         string='Estado Reserva',
         readonly=True,
         store=True
     )
-    
-    @api.depends('price_currency_id', 'currency_id', 'date')
-    def _compute_currency_rate(self):
-        """Calcula y almacena la tasa de cambio al momento del registro"""
-        for line in self:
-            if line.price_currency_id and line.currency_id and line.price_currency_id != line.currency_id:
-                # Obtener la tasa de cambio en la fecha del consumo
-                line.currency_rate = line.price_currency_id._get_conversion_rate(
-                    line.price_currency_id,
-                    line.currency_id,
-                    line.company_id or self.env.company,
-                    line.date or fields.Date.today()
-                )
-            else:
-                line.currency_rate = 1.0
-    
-    @api.depends('quantity', 'price_unit', 'tax_ids', 'price_currency_id', 'currency_id', 'currency_rate')
+
+    @api.depends('quantity', 'price_unit', 'tax_ids')
     def _compute_amount(self):
-        """Calcula subtotal y total con impuestos en la moneda de la reserva"""
+        """Calcula subtotal y total con impuestos en la moneda de resguardo"""
         for line in self:
-            # Convertir precio a la moneda de la reserva si es necesario
-            if line.price_currency_id and line.currency_id:
-                if line.price_currency_id == line.currency_id:
-                    price_unit_reservation_currency = line.price_unit
-                else:
-                    # Usar la tasa almacenada o calcular una nueva
-                    price_unit_reservation_currency = line.price_currency_id._convert(
-                        line.price_unit,
-                        line.currency_id,
-                        line.company_id or self.env.company,
-                        line.date or fields.Date.today()
-                    )
-            else:
-                price_unit_reservation_currency = line.price_unit
-            
-            price = price_unit_reservation_currency * line.quantity
+            price = line.price_unit * line.quantity
             line.price_subtotal = price
-            
+
             if line.tax_ids:
                 taxes = line.tax_ids.compute_all(
-                    price_unit=price_unit_reservation_currency,
+                    price_unit=line.price_unit,
                     quantity=line.quantity,
                     currency=line.currency_id,
                     product=line.product_id,
@@ -189,28 +145,43 @@ class HotelReservationLine(models.Model):
         """Actualiza campos basados en el producto seleccionado"""
         if self.product_id:
             self.name = self.product_id.display_name
-            
+
             # Obtener precio de la lista de precios si existe
             if self.pricelist_id:
                 price = self.pricelist_id._get_product_price(
                     self.product_id,
                     self.quantity or 1.0,
-                    currency=self.price_currency_id,
+                    currency=self.currency_id,
                     date=self.date or fields.Date.today()
                 )
+                # Si el precio está en otra moneda, convertir a moneda de resguardo
+                if self.pricelist_id.currency_id != self.currency_id:
+                    price = self.pricelist_id.currency_id._convert(
+                        price,
+                        self.currency_id,
+                        self.company_id or self.env.company,
+                        self.date or fields.Date.today()
+                    )
                 self.price_unit = price
-                # La moneda del precio será la de la lista de precios
-                self.price_currency_id = self.pricelist_id.currency_id
             else:
-                self.price_unit = self.product_id.lst_price
-                self.price_currency_id = self.currency_id
-            
+                # Obtener precio del producto y convertir si es necesario
+                product_price = self.product_id.lst_price
+                product_currency = self.product_id.currency_id
+                if product_currency != self.currency_id:
+                    product_price = product_currency._convert(
+                        product_price,
+                        self.currency_id,
+                        self.company_id or self.env.company,
+                        self.date or fields.Date.today()
+                    )
+                self.price_unit = product_price
+
             # Obtener impuestos del producto
             taxes = self.product_id.taxes_id.filtered(
                 lambda t: t.company_id == self.company_id
             )
             self.tax_ids = taxes
-    
+
     @api.onchange('quantity')
     def _onchange_quantity(self):
         """Actualiza el precio cuando cambia la cantidad (puede haber descuentos por volumen)"""
@@ -218,9 +189,17 @@ class HotelReservationLine(models.Model):
             price = self.pricelist_id._get_product_price(
                 self.product_id,
                 self.quantity or 1.0,
-                currency=self.price_currency_id,
+                currency=self.currency_id,
                 date=self.date or fields.Date.today()
             )
+            # Si el precio está en otra moneda, convertir a moneda de resguardo
+            if self.pricelist_id.currency_id != self.currency_id:
+                price = self.pricelist_id.currency_id._convert(
+                    price,
+                    self.currency_id,
+                    self.company_id or self.env.company,
+                    self.date or fields.Date.today()
+                )
             self.price_unit = price
     
     @api.constrains('quantity')

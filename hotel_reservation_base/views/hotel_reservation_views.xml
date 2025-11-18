@@ -39,22 +39,41 @@
                                 invisible="pos_order_count == 0">
                             <field name="pos_order_count" widget="statinfo" string="Órdenes POS"/>
                         </button>
+                        <button name="action_lock"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-lock"
+                                string="Bloquear"
+                                invisible="is_locked"
+                                groups="hotel_reservation_base.group_hotel_manager"/>
+                        <button name="action_unlock"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-unlock"
+                                string="Desbloquear"
+                                invisible="not is_locked"
+                                groups="hotel_reservation_base.group_hotel_manager"/>
                     </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name" readonly="1"/>
                         </h1>
+                        <div invisible="not pms_reservation_number">
+                            <label for="pms_reservation_number" string="Reserva PMS:"/>
+                            <field name="pms_reservation_number" class="oe_inline" readonly="1"/>
+                        </div>
                     </div>
+                    <field name="is_locked" invisible="1"/>
                     <group>
                         <group>
                             <field name="partner_id" options="{'no_create': True}"/>
-                            <field name="room_number"/>
-                            <field name="checkin_date"/>
-                            <field name="checkout_date"/>
+                            <field name="room_number" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                            <field name="checkin_date" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                            <field name="checkout_date" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
                         </group>
                         <group>
-                            <field name="adults"/>
-                            <field name="children"/>
+                            <field name="adults" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                            <field name="children" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
                             <field name="pricelist_id" options="{'no_create': True}"/>
                         </group>
                     </group>
@@ -76,8 +95,38 @@
                                     <field name="product_id" options="{'no_create': True}"/>
                                     <field name="name"/>
                                     <field name="quantity"/>
-                                    <field name="price_unit"/>
-                                    <field name="price_subtotal" sum="Total"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="price_unit" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="price_subtotal" sum="Total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="PMS" name="pms_charges">
+                            <field name="pms_line_ids">
+                                <tree create="false" delete="false" edit="false">
+                                    <field name="date"/>
+                                    <field name="name"/>
+                                    <field name="product_id"/>
+                                    <field name="quantity"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="price_unit" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="price_subtotal" sum="Total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="pms_reference"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Huéspedes" name="guests">
+                            <field name="guest_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="partner_id" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                                    <field name="room_number" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                                    <field name="adults" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                                    <field name="children" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                                    <field name="checkin_date" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                                    <field name="checkout_date" readonly="is_locked and state in ['checked_in', 'checked_out', 'done']"/>
+                                    <field name="state" column_invisible="1"/>
+                                    <field name="is_locked" column_invisible="1"/>
                                 </tree>
                             </field>
                         </page>
@@ -153,16 +202,21 @@
                         </div>
 
                         <!-- Totales en Moneda de Reserva (Secundario/Desglose) -->
+                        <field name="pms_charges_subtotal"
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
+                               string="PMS"/>
                         <field name="charges_subtotal"
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
-                               string="Cargos Manuales"/>
+                               string="Consumos"/>
                         <field name="pos_charges_subtotal"
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
+                               invisible="pos_charges_subtotal == 0"
                                string="Consumos POS"/>
                         <div class="oe_subtotal_footer_separator oe_inline">
-                            <label for="amount_total"/>
+                            <label for="amount_total" string="Total"/>
                         </div>
                         <field name="amount_total"
                                nolabel="1"
@@ -170,9 +224,10 @@
                                options="{'currency_field': 'currency_id'}"/>
                         <field name="total_paid"
                                widget="monetary"
-                               options="{'currency_field': 'currency_id'}"/>
+                               options="{'currency_field': 'currency_id'}"
+                               string="Anticipos"/>
                         <div class="oe_subtotal_footer_separator oe_inline">
-                            <label for="balance"/>
+                            <label for="balance" string="Saldo"/>
                         </div>
                         <field name="balance"
                                nolabel="1"

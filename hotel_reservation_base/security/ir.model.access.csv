@@ -1,5 +1,7 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_hotel_reservation_user,hotel.reservation.user,model_hotel_reservation,base.group_user,1,1,1,1
 access_hotel_reservation_line_user,hotel.reservation.line.user,model_hotel_reservation_line,base.group_user,1,1,1,1
+access_hotel_reservation_pms_line_user,hotel.reservation.pms.line.user,model_hotel_reservation_pms_line,base.group_user,1,1,1,1
+access_hotel_reservation_guest_user,hotel.reservation.guest.user,model_hotel_reservation_guest,base.group_user,1,1,1,1
 access_hotel_reservation_payment_user,hotel.reservation.payment.user,model_hotel_reservation_payment,base.group_user,1,1,1,1
 access_hotel_payment_wizard_user,hotel.payment.wizard.user,model_hotel_payment_wizard,base.group_user,1,1,1,1
