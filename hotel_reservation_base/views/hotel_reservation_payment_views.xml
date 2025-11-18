@@ -12,16 +12,22 @@
                 <field name="name"/>
                 <field name="partner_id" optional="show"/>
                 <field name="room_number" optional="show"/>
-                <field name="amount" widget="monetary" sum="Total Anticipos"/>
+                <field name="amount" widget="monetary" sum="Total Anticipos" string="Monto Original"/>
                 <field name="currency_id" column_invisible="1"/>
-                <field name="amount_reservation_currency" widget="monetary" 
-                       string="Monto (Moneda Reserva)" 
-                       sum="Total en Moneda Reserva"
-                       optional="show"/>
-                <field name="reservation_currency_id" column_invisible="1"/>
-                <field name="payment_method_id"/>
-                <field name="journal_id" optional="hide"/>
+                <field name="alternative_currency_id" column_invisible="1"/>
+                <field name="amount_alt"
+                       widget="monetary"
+                       string="Monto (Mon. Alt)"
+                       sum="Total en Moneda Alternativa"
+                       optional="show"
+                       invisible="not alternative_currency_id"/>
+                <field name="exchange_rate_at_payment"
+                       string="Tasa Cambio"
+                       optional="hide"
+                       invisible="not alternative_currency_id"/>
+                <field name="journal_id" optional="show"/>
                 <field name="reference" optional="show"/>
+                <field name="state" optional="show" widget="badge" decoration-success="state == 'posted'" decoration-muted="state == 'cancel'"/>
                 <field name="account_payment_id" optional="hide"/>
                 <field name="is_applied" widget="boolean_toggle" readonly="1"/>
                 <button name="action_view_account_payment"
@@ -40,19 +46,25 @@
         <field name="arch" type="xml">
             <form string="Anticipo">
                 <header>
+                    <button name="action_cancel"
+                            string="Cancelar"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state != 'posted'"
+                            confirm="¿Está seguro que desea cancelar este anticipo? Esto cancelará el pago contable asociado."/>
                     <button name="action_apply_to_checkout"
                             string="Aplicar al Checkout"
                             type="object"
                             class="btn-primary"
-                            invisible="is_applied or state not in ['checked_in']"/>
-                    <field name="is_applied" widget="boolean_toggle" readonly="1"/>
+                            invisible="is_applied or reservation_state not in ['checked_in']"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_account_payment"
                                 type="object"
                                 class="oe_stat_button"
-                                icon="fa-money"
+                                icon="fa-credit-card"
                                 invisible="not account_payment_id">
                             <field name="account_payment_id" widget="statinfo" string="Pago Contable"/>
                         </button>
@@ -67,19 +79,24 @@
                             <field name="reservation_id" readonly="1"/>
                             <field name="partner_id"/>
                             <field name="room_number"/>
-                            <field name="state" invisible="1"/>
+                            <field name="reservation_state" invisible="1"/>
+                            <field name="is_applied" invisible="1"/>
                         </group>
                         <group>
-                            <field name="amount" widget="monetary" readonly="1"/>
+                            <field name="amount" widget="monetary" readonly="1" string="Monto Pagado"/>
                             <field name="currency_id" invisible="1"/>
-                            <field name="reservation_currency_id" invisible="1"/>
-                            <field name="amount_reservation_currency"
+                            <field name="alternative_currency_id" invisible="1"/>
+                            <field name="amount_alt"
                                    widget="monetary"
                                    readonly="1"
-                                   invisible="currency_id == reservation_currency_id"
-                                   string="Monto en Moneda de Reserva"/>
+                                   invisible="not alternative_currency_id"
+                                   string="Monto en Moneda Alternativa"
+                                   style="font-weight: bold; color: #875A7B;"/>
+                            <field name="exchange_rate_at_payment"
+                                   readonly="1"
+                                   invisible="not alternative_currency_id"
+                                   string="Tasa de Cambio Aplicada"/>
                             <field name="payment_date" readonly="1"/>
-                            <field name="payment_method_id" readonly="1"/>
                         </group>
                     </group>
                     <group>
@@ -112,7 +129,7 @@
                 <field name="partner_id"/>
                 <field name="room_number"/>
                 <field name="reference"/>
-                <field name="payment_method_id"/>
+                <field name="journal_id"/>
                 <separator/>
                 <filter string="Aplicados" name="applied" domain="[('is_applied', '=', True)]"/>
                 <filter string="Pendientes" name="pending" domain="[('is_applied', '=', False)]"/>
@@ -124,7 +141,6 @@
                 <group expand="0" string="Agrupar por">
                     <filter string="Reserva" name="group_reservation" context="{'group_by': 'reservation_id'}"/>
                     <filter string="Cliente" name="group_partner" context="{'group_by': 'partner_id'}"/>
-                    <filter string="Método de Pago" name="group_payment_method" context="{'group_by': 'payment_method_id'}"/>
                     <filter string="Diario" name="group_journal" context="{'group_by': 'journal_id'}"/>
                     <filter string="Fecha" name="group_date" context="{'group_by': 'payment_date:day'}"/>
                     <filter string="Estado" name="group_applied" context="{'group_by': 'is_applied'}"/>

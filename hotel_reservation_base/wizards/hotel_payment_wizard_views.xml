@@ -14,13 +14,15 @@
                         <field name="partner_id" readonly="1"/>
                         <field name="room_number"/>
                         <field name="reservation_currency_id" invisible="1"/>
-                        <field name="balance" widget="monetary" options="{'currency_field': 'reservation_currency_id'}"/>
+                        <field name="balance"
+                               widget="monetary"
+                               options="{'currency_field': 'reservation_currency_id'}"
+                               string="Saldo Actual"/>
                     </group>
                     <group>
-                        <field name="amount" widget="monetary" required="1"/>
-                        <field name="currency_id" required="1"/>
-                        <field name="payment_method_id" required="1" options="{'no_create': True}"/>
                         <field name="journal_id" required="1" domain="[('type', 'in', ['bank', 'cash'])]" options="{'no_create': True}"/>
+                        <field name="currency_id" readonly="1"/>
+                        <field name="amount" widget="monetary" required="1"/>
                         <field name="payment_date" required="1"/>
                     </group>
                 </group>

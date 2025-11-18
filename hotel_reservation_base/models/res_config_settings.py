@@ -12,8 +12,17 @@ class ResCompany(models.Model):
     hotel_advance_account_id = fields.Many2one(
         'account.account',
         string='Cuenta de Anticipos de Hotel',
-        domain="[('account_type', 'in', ['liability_current', 'liability_non_current']), ('deprecated', '=', False)]",
-        help='Cuenta contable para registrar los anticipos de reservas hoteleras'
+        domain="[('deprecated', '=', False), ('company_id', '=', id), ('reconcile', '=', True)]",
+        help='Cuenta contable para registrar los anticipos de reservas hoteleras. '
+             'IMPORTANTE: Debe ser una cuenta reconciliable de tipo Pasivo (ej: Pasivo Corriente).'
+    )
+
+    alternative_hotel_currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda Alternativa Hotel',
+        help='Moneda de referencia para mostrar deudas y saldos del hotel. '
+             'En economías inflacionarias, permite preservar el valor real de las deudas. '
+             'Ejemplo: USD en Venezuela, EUR en países con moneda inestable.'
     )
 
 
@@ -25,30 +34,35 @@ class ResConfigSettings(models.TransientModel):
         string='Cuenta de Anticipos',
         related='company_id.hotel_advance_account_id',
         readonly=False,
-        domain="[('account_type', 'in', ['liability_current', 'liability_non_current']), ('deprecated', '=', False), ('company_id', '=', company_id)]",
-        help='Cuenta contable de pasivo para registrar los anticipos recibidos de clientes. Esta cuenta se usará hasta que se genere la factura y se concilie el pago.'
+        domain="[('deprecated', '=', False), ('company_id', '=', company_id), ('reconcile', '=', True)]",
+        help='Cuenta contable para registrar los anticipos recibidos de clientes. '
+             'IMPORTANTE: Debe ser una cuenta reconciliable de tipo Pasivo (ej: Pasivo Corriente). '
+             'Esta cuenta se usará hasta que se genere la factura y se concilie el pago.'
+    )
+
+    alternative_hotel_currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda Alternativa Hotel',
+        related='company_id.alternative_hotel_currency_id',
+        readonly=False,
+        help='Moneda de referencia para mostrar deudas y saldos del hotel. '
+             'En economías inflacionarias, permite preservar el valor real de las deudas. '
+             'Los pagos se registran en su moneda original y se convierten a esta moneda alternativa. '
+             'Ejemplo: USD en Venezuela, EUR en países con moneda inestable.'
     )
     
     @api.constrains('hotel_advance_account_id')
     def _check_advance_account(self):
         for record in self:
             if record.hotel_advance_account_id:
-                if record.hotel_advance_account_id.account_type not in ['liability_current', 'liability_non_current']:
-                    raise ValidationError(_('La cuenta de anticipos debe ser una cuenta de pasivo (Pasivo Corriente o No Corriente)'))
                 if record.hotel_advance_account_id.deprecated:
                     raise ValidationError(_('No se puede usar una cuenta deprecada para anticipos'))
-    
-    def set_values(self):
-        """Override para validar antes de guardar"""
-        if self.hotel_advance_account_id:
-            # Validar que la cuenta sea apropiada
-            if self.hotel_advance_account_id.account_type not in ['liability_current', 'liability_non_current']:
-                raise ValidationError(_(
-                    'La cuenta seleccionada "%s" no es una cuenta de pasivo. '
-                    'Por favor seleccione una cuenta de tipo Pasivo Corriente o Pasivo No Corriente.'
-                ) % self.hotel_advance_account_id.display_name)
-        
-        return super().set_values()
+                # IMPORTANTE: La cuenta debe ser reconciliable para que funcione con account.payment
+                if not record.hotel_advance_account_id.reconcile:
+                    raise ValidationError(_(
+                        'La cuenta de anticipos "%s" debe ser reconciliable. '
+                        'Por favor active la opción "Permitir Conciliación" en la configuración de la cuenta.'
+                    ) % record.hotel_advance_account_id.display_name)
     
     @api.model
     def get_values(self):
