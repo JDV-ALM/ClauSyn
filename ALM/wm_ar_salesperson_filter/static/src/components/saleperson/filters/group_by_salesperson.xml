@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates>
+
+    <t t-name="wm_ar_salesperson_filter.AccountReportGroupBySalesperson">
+         <t t-if="controller.filters.show_salesperson_hierarchy">
+                <DropdownItem
+                        class="{ 'selected': controller.options.salesperson_hierarchy }"
+                        onSelected="() => this.filterClicked({ optionKey: 'salesperson_hierarchy', reload: true})"
+                        closingMode="'none'"
+                >
+                    Group by Salesperson
+                </DropdownItem>
+         </t>
+    </t>
+</templates>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates>
+    <t t-name="wm_ar_salesperson_filter.AccountReportFilterSalesperson">
+        <Dropdown menuClass="'account_report_filter partner'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-folder-open me-1"/>Salesperson
+            </button>
+            <t t-set-slot="content">
+                <div class="dropdown-item gap-4 align-items-center">
+                    <label>Salesperson</label>
+                    <MultiRecordSelector t-props="getMultiRecordSelectorProps('res.users', 'salesperson_ids')"/>
+                </div>
+            </t>
+        </Dropdown>
+    </t>
+
+</templates>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Cron propio para BCV con control total -->
+        <record id="ir_cron_bcv_currency_update" model="ir.cron">
+            <field name="name">BCV: Actualización de Tasas de Cambio</field>
+            <field name="model_id" ref="base.model_res_company"/>
+            <field name="state">code</field>
+            <field name="code">
+# Cron específico para BCV con logging detallado
+try:
+    log("[BCV] ========== INICIANDO CRON BCV ==========")
+    log(f"[BCV] Hora de ejecución: {fields.Datetime.now()}")
+    
+    # Buscar empresas con proveedor BCV
+    companies = env['res.company'].search([('currency_provider', '=', 'bcv')])
+    
+    if not companies:
+        log("[BCV] No hay empresas configuradas con proveedor BCV", level="warning")
+    else:
+        log(f"[BCV] Encontradas {len(companies)} empresa(s) con BCV")
+        for company in companies:
+            log(f"[BCV] Procesando empresa: {company.name} (ID: {company.id})")
+            log(f"[BCV]   - Días hábiles: {company.can_update_habil_days}")
+            log(f"[BCV]   - Tasa lunes en fin de semana: {company.bcv_weekend_use_monday}")
+        
+        # Ejecutar actualización
+        result = companies.bcv_update_currency_rates()
+        
+        if result:
+            log("[BCV] ✓ Actualización completada exitosamente")
+        else:
+            log("[BCV] ✗ La actualización finalizó con errores", level="error")
+    
+    log("[BCV] ========== FIN CRON BCV ==========")
+    
+except Exception as e:
+    log(f"[BCV] ERROR CRÍTICO EN CRON: {str(e)}", level="error")
+    raise
+            </field>
+            <field name="active" eval="True"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <!-- Ejecutar a las 8:30 AM Venezuela (12:30 UTC aprox) -->
+            <field name="nextcall" eval="(DateTime.now().replace(hour=7, minute=30, second=0) + timedelta(days=1))"/>
+            <field name="priority">1</field>
+        </record>
+    </data>
+</odoo>

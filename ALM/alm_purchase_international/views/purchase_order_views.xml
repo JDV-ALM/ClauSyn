@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Vista Formulario - Añadir campo Internacional -->
+    <record id="purchase_order_form_international" model="ir.ui.view">
+        <field name="name">purchase.order.form.international</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Añadir campo después del partner_id -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="is_international" 
+                       widget="boolean_toggle"
+                       options="{'autosave': False}"/>
+            </xpath>
+            
+            <!-- Añadir badge visual en el header cuando es internacional -->
+            <xpath expr="//div[@name='button_box']" position="before">
+                <widget name="web_ribbon" 
+                        title="INTERNACIONAL" 
+                        bg_color="bg-danger"
+                        invisible="not is_international"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Vista Lista - Añadir columna y decoración -->
+    <record id="purchase_order_tree_international" model="ir.ui.view">
+        <field name="name">purchase.order.tree.international</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_tree"/>
+        <field name="arch" type="xml">
+            
+            <!-- Añadir columna después del partner -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="is_international" optional="show"/>
+            </xpath>
+            
+            <!-- Decoración para resaltar órdenes internacionales -->
+            <xpath expr="//list" position="attributes">
+                <attribute name="decoration-danger">is_international == True</attribute>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Vista Lista para RFQ - Añadir columna -->
+    <record id="purchase_order_kpis_tree_international" model="ir.ui.view">
+        <field name="name">purchase.order.kpis.tree.international</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_kpis_tree"/>
+        <field name="arch" type="xml">
+            
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="is_international" 
+                       widget="boolean" 
+                       optional="show"
+                       string="Int."/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Vista Kanban - Añadir indicador -->
+    <record id="purchase_order_kanban_international" model="ir.ui.view">
+        <field name="name">purchase.order.kanban.international</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.view_purchase_order_kanban"/>
+        <field name="arch" type="xml">
+            
+            <!-- Añadir campo a los disponibles en kanban -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="is_international"/>
+            </xpath>
+            
+            <!-- Añadir indicador después del campo partner_id en la tarjeta -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <span t-if="record.is_international.raw_value" 
+                      class="badge text-bg-danger ms-2">
+                    <i class="fa fa-globe" title="Internacional"/> INT
+                </span>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Filtro de Búsqueda -->
+    <record id="purchase_order_search_international" model="ir.ui.view">
+        <field name="name">purchase.order.search.international</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.view_purchase_order_filter"/>
+        <field name="arch" type="xml">
+            
+            <!-- Añadir filtros -->
+            <xpath expr="//filter[@name='draft']" position="after">
+                <separator/>
+                <filter string="Nacionales" 
+                        name="national" 
+                        domain="[('is_international', '=', False)]"
+                        help="Órdenes de compra nacionales"/>
+                <filter string="Internacionales" 
+                        name="international" 
+                        domain="[('is_international', '=', True)]"
+                        help="Órdenes de compra internacionales"
+                        groups="alm_purchase_international.group_purchase_international"/>
+            </xpath>
+            
+            <!-- Añadir agrupación -->
+            <xpath expr="//group" position="inside">
+                <filter string="Tipo (Nacional/Internacional)" 
+                        name="groupby_international" 
+                        domain="[]" 
+                        context="{'group_by': 'is_international'}"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Acción para Compras Internacionales -->
+    <record id="purchase_international_action" model="ir.actions.act_window">
+        <field name="name">Órdenes Internacionales</field>
+        <field name="res_model">purchase.order</field>
+        <field name="view_mode">list,kanban,form,pivot,graph,calendar,activity</field>
+        <field name="domain">[('is_international', '=', True)]</field>
+        <field name="context">{'default_is_international': True}</field>
+        <field name="search_view_id" ref="purchase.view_purchase_order_filter"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay órdenes de compra internacionales
+            </p>
+            <p>
+                Las órdenes internacionales son aquellas realizadas a proveedores fuera del país.
+            </p>
+        </field>
+    </record>
+    
+    <!-- Menú para Compras Internacionales (solo visible para el grupo) -->
+    <menuitem id="menu_purchase_international"
+              name="Órdenes Internacionales"
+              parent="purchase.menu_procurement_management"
+              action="purchase_international_action"
+              groups="alm_purchase_international.group_purchase_international"
+              sequence="7"/>
+    
+</odoo>

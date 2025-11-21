@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Acción para el reporte de factura en VES sin logo -->
+    <record id="account_invoices_almus_ves" model="ir.actions.report">
+        <field name="name">Factura VES</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">almus_invoice_reports.report_invoice_almus_ves</field>
+        <field name="report_file">almus_invoice_reports.report_invoice_almus_ves</field>
+        <field name="print_report_name">'FACTURA %s' % (object.name or '')</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+        <field name="groups_id" eval="[(4, ref('account.group_account_invoice'))]"/>
+    </record>
+
+    <!-- Template principal del reporte VES -->
+    <template id="report_invoice_almus_ves">
+        <t t-call="almus_invoice_reports.report_invoice_document_almus_ves"/>
+    </template>
+
+    <!-- Reporte con pagos incluidos VES -->
+    <template id="report_invoice_with_payments_almus_ves">
+        <t t-call="almus_invoice_reports.report_invoice_almus_ves">
+            <t t-set="print_with_payments" t-value="True"/>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista Form de Producto - Agregar campos USD después de standard_price -->
+    <record id="product_product_form_view_inherit_cost_usd" model="ir.ui.view">
+        <field name="name">product.product.form.cost.usd</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <!-- Agregar campos USD después de standard_price -->
+            <xpath expr="//field[@name='standard_price']" position="after">
+                <field name="currency_usd_id" invisible="1"/>
+                <field name="cost_usd_ref" widget="monetary" 
+                       options="{'currency_field': 'currency_usd_id'}"/>
+                <field name="cost_usd_fixed" widget="monetary"
+                       options="{'currency_field': 'currency_usd_id'}"
+                       groups="stock.group_stock_manager"/>
+                <field name="cost_usd_ref_date" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Vista Tree de Producto - Agregar columnas USD -->
+    <record id="product_product_tree_view_inherit_cost_usd" model="ir.ui.view">
+        <field name="name">product.product.tree.cost.usd</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_product_tree_view"/>
+        <field name="arch" type="xml">
+            <!-- Agregar columnas después del precio -->
+            <xpath expr="//field[@name='standard_price']" position="after">
+                <field name="currency_usd_id" column_invisible="1"/>
+                <field name="cost_usd_ref" string="Costo Ref USD" widget="monetary" 
+                       options="{'currency_field': 'currency_usd_id'}"
+                       optional="show"/>
+                <field name="cost_usd_fixed" string="Costo Fijo USD" widget="monetary"
+                       options="{'currency_field': 'currency_usd_id'}"
+                       optional="show"
+                       groups="stock.group_stock_manager"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Vista Template - Agregar campos USD después de standard_price -->
+    <record id="product_template_form_view_inherit_cost_usd" model="ir.ui.view">
+        <field name="name">product.template.form.cost.usd</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <!-- En template, agregar después de standard_price en group_standard_price -->
+            <xpath expr="//group[@name='group_standard_price']//field[@name='standard_price']" position="after">
+                <field name="currency_usd_id" invisible="1"/>
+                <field name="cost_usd_ref" widget="monetary" 
+                       options="{'currency_field': 'currency_usd_id'}"
+                       invisible="product_variant_count > 1"/>
+                <field name="cost_usd_fixed" widget="monetary"
+                       options="{'currency_field': 'currency_usd_id'}"
+                       groups="stock.group_stock_manager"
+                       invisible="product_variant_count > 1"/>
+                <field name="cost_usd_ref_date" 
+                       invisible="product_variant_count > 1"
+                       optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Vista Search - Agregar filtros -->
+    <record id="product_product_search_view_inherit_cost_usd" model="ir.ui.view">
+        <field name="name">product.product.search.cost.usd</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_search_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='filter_to_sell']" position="after">
+                <separator/>
+                <filter string="Con Costo Ref USD" name="with_cost_ref"
+                        domain="[('cost_usd_ref', '>', 0)]"/>
+                <filter string="Con Costo Fijo USD" name="with_cost_fixed"
+                        domain="[('cost_usd_fixed', '>', 0)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Acción para ver productos con costos USD -->
+    <record id="action_product_cost_usd" model="ir.actions.act_window">
+        <field name="name">Productos - Costos USD</field>
+        <field name="res_model">product.product</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_with_cost_ref': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay productos con costos USD configurados
+            </p>
+            <p>
+                <b>Costo Ref USD:</b> Se actualiza automáticamente cuando cambia el costo estándar<br/>
+                <b>Costo Fijo USD:</b> Se actualiza solo mediante importación masiva
+            </p>
+        </field>
+    </record>
+</odoo>

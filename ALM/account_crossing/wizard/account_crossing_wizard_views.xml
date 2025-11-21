@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="account_crossing_wizard_form_view" model="ir.ui.view">
+        <field name="name">account.crossing.wizard.form</field>
+        <field name="model">account.crossing.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Registro de Cruce Contable">
+                <group>
+                    <group string="Información del Documento">
+                        <field name="move_id" invisible="1"/>
+                        <field name="company_id" invisible="1"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="company_currency_id" invisible="1"/>
+                        <field name="show_dual_currency" invisible="1"/>
+                        <field name="partner_id"/>
+                        <field name="move_type"/>
+                        <field name="invoice_date"/>
+                        <field name="amount_total"/>
+                        <field name="amount_residual"/>
+                    </group>
+                    <group string="Información del Cruce">
+                        <field name="crossing_date"/>
+                        <field name="user_id"/>
+                        <field name="crossing_reason_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="journal_id"/>
+                        <field name="account_id"/>
+                        <field name="show_account_balance" invisible="1"/>
+                        
+                        <!-- Saldo en moneda de la factura -->
+                        <label for="account_balance"
+                               string="Saldo Disponible"
+                               invisible="show_account_balance == False or show_dual_currency == False"/>
+                        <div invisible="show_account_balance == False or show_dual_currency == False">
+                            <field name="account_balance"
+                                   widget="monetary"
+                                   options="{'currency_field': 'currency_id'}"
+                                   decoration-success="account_balance &gt; 0"
+                                   decoration-danger="account_balance &lt; 0"
+                                   decoration-muted="account_balance == 0"
+                                   class="oe_inline"/>
+                            <span class="text-muted oe_inline"> (Moneda extranjera)</span>
+                        </div>
+                        
+                        <!-- Saldo en moneda base -->
+                        <label for="account_balance_company"
+                               string="Saldo en Moneda Base"
+                               invisible="show_account_balance == False or show_dual_currency == False"/>
+                        <div invisible="show_account_balance == False or show_dual_currency == False">
+                            <field name="account_balance_company"
+                                   widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"
+                                   decoration-success="account_balance_company &gt; 0"
+                                   decoration-danger="account_balance_company &lt; 0"
+                                   decoration-muted="account_balance_company == 0"
+                                   class="oe_inline"/>
+                            <span class="text-muted oe_inline"> (Con tasas históricas)</span>
+                        </div>
+                        
+                        <!-- Saldo simple (solo moneda base) -->
+                        <field name="account_balance"
+                               invisible="show_account_balance == False or show_dual_currency == True"
+                               widget="monetary"
+                               decoration-success="account_balance &gt; 0"
+                               decoration-danger="account_balance &lt; 0"
+                               decoration-muted="account_balance == 0"/>
+                        
+                        <field name="account_balance_info"
+                               invisible="show_account_balance == False"
+                               class="text-muted"/>
+                        
+                        <field name="commission_seller_id" options="{'no_create': True}"/>
+                    </group>
+                </group>
+                <group>
+                    <field name="amount"/>
+                    <field name="show_partial_warning" invisible="1"/>
+                    <field name="show_excess_warning" invisible="1"/>
+                </group>
+                <div class="alert alert-warning" role="alert" invisible="show_partial_warning == False">
+                    <i class="fa fa-exclamation-triangle"/> El monto ingresado es menor al saldo pendiente. Se realizará un cruce parcial.
+                </div>
+                <div class="alert alert-danger" role="alert" invisible="show_excess_warning == False">
+                    <i class="fa fa-times-circle"/> El monto ingresado excede el saldo pendiente de la factura.
+                </div>
+                <group>
+                    <field name="notes" placeholder="Agregar notas o comentarios sobre este cruce..."/>
+                </group>
+                <footer>
+                    <button name="action_create_crossing" 
+                            string="Crear Cruce" 
+                            type="object" 
+                            class="btn-primary"
+                            data-hotkey="q"/>
+                    <button name="action_create_and_new" 
+                            string="Crear y Nuevo" 
+                            type="object" 
+                            class="btn-secondary"
+                            invisible="show_excess_warning == True"/>
+                    <button string="Cancelar" 
+                            class="btn-secondary" 
+                            special="cancel"
+                            data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action for wizard -->
+    <record id="action_account_crossing_wizard" model="ir.actions.act_window">
+        <field name="name">Registro de Cruce Contable</field>
+        <field name="res_model">account.crossing.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

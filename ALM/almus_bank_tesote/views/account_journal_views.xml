@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Account Journal Form View -->
+    <record id="view_account_journal_form_inherit_tesote" model="ir.ui.view">
+        <field name="name">account.journal.form.inherit.tesote</field>
+        <field name="model">account.journal</field>
+        <field name="inherit_id" ref="account.view_account_journal_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Tesote Sync" invisible="type not in ['bank', 'cash']">
+                    <group>
+                        <group string="Tesote Configuration">
+                            <field name="tesote_account_id" 
+                                   string="Tesote Account"
+                                   help="Run 'Fetch Accounts' in Settings to populate this list"/>
+                            <field name="tesote_sync_enabled"/>
+                            <field name="tesote_last_sync" readonly="1"/>
+                        </group>
+                        <group>
+                            <button name="action_sync_tesote" 
+                                    type="object" 
+                                    string="Sync Now" 
+                                    class="btn-primary"
+                                    invisible="not tesote_account_id"
+                                    icon="oi-refresh"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Account Journal List View -->
+    <record id="view_account_journal_list_inherit_tesote" model="ir.ui.view">
+        <field name="name">account.journal.list.inherit.tesote</field>
+        <field name="model">account.journal</field>
+        <field name="inherit_id" ref="account.view_account_journal_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <field name="tesote_sync_enabled" optional="hide"/>
+                <field name="tesote_last_sync" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Quick Sync Action -->
+    <record id="action_tesote_sync_wizard" model="ir.actions.act_window">
+        <field name="name">Sync from Tesote</field>
+        <field name="res_model">tesote.sync.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="account.model_account_journal"/>
+        <field name="binding_view_types">list</field>
+    </record>
+</odoo>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Invoice Form View to add Crossing button -->
+    <record id="view_account_move_form_inherit_crossing" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.crossing</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Add button next to Register Payment -->
+            <xpath expr="//button[@name='action_register_payment']" position="after">
+                <button name="action_register_crossing"
+                        type="object"
+                        string="Pago/Cruce"
+                        class="oe_highlight"
+                        invisible="state != 'posted' or payment_state == 'paid' or move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')"
+                        data-hotkey="shift+c"
+                        groups="account_crossing.group_account_crossing_user"/>
+            </xpath>
+
+            <!-- Add smart button for crossings -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_crossings"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-exchange"
+                        invisible="crossing_count == 0"
+                        groups="account_crossing.group_account_crossing_user">
+                    <field name="crossing_count" widget="statinfo" string="Cruces"/>
+                </button>
+            </xpath>
+
+            <!-- Add fields (invisible) -->
+            <xpath expr="//field[@name='invoice_date']" position="after">
+                <field name="crossing_ids" invisible="1"/>
+                <field name="crossing_count" invisible="1"/>
+                <field name="has_crossings" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Configuration in Settings (quitamos esta vista problemática por ahora) -->
+    <!--
+    <record id="res_config_settings_view_form_inherit_crossing" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.crossing</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='follow_up_setting_container']" position="after">
+                <div class="col-12 col-lg-6 o_setting_box" id="crossing_settings">
+                    <div class="o_setting_left_pane">
+                        <field name="crossing_auto_post"/>
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label for="crossing_auto_post"/>
+                        <div class="text-muted">
+                            Confirmar automáticamente los cruces contables al crearlos
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+    -->
+</odoo>

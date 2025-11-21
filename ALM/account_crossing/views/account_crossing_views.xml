@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- List View -->
+    <record id="account_crossing_list_view" model="ir.ui.view">
+        <field name="name">account.crossing.list</field>
+        <field name="model">account.crossing</field>
+        <field name="arch" type="xml">
+            <list string="Cruces Contables" decoration-info="state=='draft'" decoration-muted="state=='cancelled'">
+                <field name="name"/>
+                <field name="crossing_date"/>
+                <field name="move_id"/>
+                <field name="partner_id"/>
+                <field name="crossing_reason_id"/>
+                <field name="amount" sum="Total"/>
+                <field name="commission_seller_id" optional="show"/>
+                <field name="user_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="state" widget="badge" decoration-success="state == 'posted'" decoration-warning="state == 'draft'" decoration-danger="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="account_crossing_form_view" model="ir.ui.view">
+        <field name="name">account.crossing.form</field>
+        <field name="model">account.crossing</field>
+        <field name="arch" type="xml">
+            <form string="Cruce Contable">
+                <header>
+                    <button name="action_post" string="Confirmar" type="object" class="oe_highlight" invisible="state != 'draft'" data-hotkey="v"/>
+                    <button name="action_cancel" string="Cancelar" type="object" invisible="state != 'posted'" data-hotkey="x" confirm="¿Está seguro de cancelar este cruce? Se reversará el asiento contable."/>
+                    <button name="action_draft" string="Regresar a Borrador" type="object" invisible="state != 'cancelled'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="%(account.action_move_journal_line)d" 
+                                type="action"
+                                class="oe_stat_button" 
+                                icon="fa-bars"
+                                invisible="not journal_entry_id"
+                                context="{'default_move_id': journal_entry_id}">
+                            <span>Asiento Contable</span>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Cancelado" invisible="state != 'cancelled'"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="crossing_date" readonly="state != 'draft'"/>
+                            <field name="user_id"/>
+                            <field name="crossing_reason_id" readonly="state != 'draft'" options="{'no_open': True}"/>
+                            <field name="journal_entry_id" invisible="not journal_entry_id"/>
+                        </group>
+                        <group>
+                            <field name="move_id"/>
+                            <field name="partner_id"/>
+                            <field name="move_type"/>
+                            <field name="amount"/>
+                            <field name="commission_seller_id"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Notas">
+                        <field name="notes" nolabel="1" readonly="state != 'draft'"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Pivot View -->
+    <record id="account_crossing_pivot_view" model="ir.ui.view">
+        <field name="name">account.crossing.pivot</field>
+        <field name="model">account.crossing</field>
+        <field name="arch" type="xml">
+            <pivot string="Análisis de Cruces">
+                <field name="crossing_date" type="row" interval="month"/>
+                <field name="crossing_reason_id" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Graph View -->
+    <record id="account_crossing_graph_view" model="ir.ui.view">
+        <field name="name">account.crossing.graph</field>
+        <field name="model">account.crossing</field>
+        <field name="arch" type="xml">
+            <graph string="Cruces Contables">
+                <field name="crossing_date" interval="month"/>
+                <field name="amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_account_crossing" model="ir.actions.act_window">
+        <field name="name">Cruces Contables</field>
+        <field name="res_model">account.crossing</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay cruces contables registrados
+            </p>
+            <p>
+                Los cruces contables se crean desde las facturas usando el botón "Pago/Cruce".
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Items -->
+    <menuitem id="menu_account_crossing_main"
+              name="Cruces Contables"
+              parent="account.menu_finance_receivables"
+              sequence="15"/>
+              
+    <menuitem id="menu_account_crossing_list"
+              name="Cruces"
+              parent="menu_account_crossing_main"
+              action="action_account_crossing"
+              sequence="10"/>
+
+    <!-- También en menú de proveedores -->
+    <menuitem id="menu_account_crossing_payables"
+              name="Cruces Contables"
+              parent="account.menu_finance_payables"
+              sequence="15"/>
+              
+    <menuitem id="menu_account_crossing_list_payables"
+              name="Cruces"
+              parent="menu_account_crossing_payables"
+              action="action_account_crossing"
+              sequence="10"/>
+</odoo>

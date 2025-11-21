@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_purchase_order_international,purchase.order.international,purchase.model_purchase_order,alm_purchase_international.group_purchase_international,1,1,1,1

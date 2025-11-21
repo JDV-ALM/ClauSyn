@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Heredar vista principal de líneas de asiento -->
+    <record id="view_move_line_tree_inherit_alternate" model="ir.ui.view">
+        <field name="name">account.move.line.tree.alternate</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_tree"/>
+        <field name="arch" type="xml">
+            <!-- Agregar campos después del crédito -->
+            <xpath expr="//field[@name='credit']" position="after">
+                <field name="currency_rate_usd" string="Tasa USD" optional="hide" readonly="1"/>
+                <field name="debit_alternate" sum="Total Débito USD" optional="show" readonly="1"/>
+                <field name="credit_alternate" sum="Total Crédito USD" optional="show" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Heredar vista de líneas agrupadas por partner -->
+    <record id="view_move_line_tree_grouped_partner_inherit_alternate" model="ir.ui.view">
+        <field name="name">account.move.line.tree.grouped.partner.alternate</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_tree_grouped_partner"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='credit']" position="after">
+                <field name="currency_rate_usd" string="Tasa USD" optional="hide" readonly="1"/>
+                <field name="debit_alternate" sum="Total Débito USD" optional="show" readonly="1"/>
+                <field name="credit_alternate" sum="Total Crédito USD" optional="show" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Heredar vista de auditoría de impuestos -->
+    <record id="view_move_line_tax_audit_tree_inherit_alternate" model="ir.ui.view">
+        <field name="name">account.move.line.tax.audit.tree.alternate</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_tax_audit_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='credit']" position="after">
+                <field name="currency_rate_usd" string="Tasa USD" optional="hide" readonly="1"/>
+                <field name="debit_alternate" sum="Total Débito USD" optional="show" readonly="1"/>
+                <field name="credit_alternate" sum="Total Crédito USD" optional="show" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Heredar vista formulario de línea de asiento -->
+    <record id="view_move_line_form_inherit_alternate" model="ir.ui.view">
+        <field name="name">account.move.line.form.alternate</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='credit']" position="after">
+                <field name="currency_rate_usd" readonly="1"/>
+                <field name="debit_alternate" readonly="1"/>
+                <field name="credit_alternate" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Heredar vista de líneas en el formulario del asiento contable -->
+    <record id="view_move_form_inherit_alternate" model="ir.ui.view">
+        <field name="name">account.move.form.alternate</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Agregar en la pestaña de líneas de asiento -->
+            <xpath expr="//field[@name='line_ids']//field[@name='credit']" position="after">
+                <field name="currency_rate_usd" string="Tasa USD" optional="hide" readonly="1"/>
+                <field name="debit_alternate" sum="Total Débito USD" optional="show" readonly="1"/>
+                <field name="credit_alternate" sum="Total Crédito USD" optional="show" readonly="1"/>
+            </xpath>
+            
+            <!-- Agregar total en USD en la factura después del total -->
+            <xpath expr="//field[@name='amount_residual']" position="after">
+                <field name="currency_rate_usd" string="Tasa USD" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

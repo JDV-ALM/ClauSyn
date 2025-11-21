@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Template mejorado de factura con vendedor, notas y pie de página legal -->
+        <template id="report_invoice_document_almus_enhanced">
+            <t t-call="web.external_layout">
+                <t t-set="o" t-value="o.with_context(lang=lang)" />
+                <t t-set="forced_vat" t-value="o.fiscal_position_id.foreign_vat"/>
+                
+                <div class="page">
+                    <style>
+                        .invoice_main {
+                            font-family: 'DejaVu Sans', Arial, sans-serif;
+                        }
+                        .seller_info {
+                            background-color: #ffffffff;
+                            padding: 10px;
+                            margin-bottom: 15px;
+                            border-left: 4px solid #bcbcbcff;
+                        }
+                        .legal_footer {
+                            background-color: #e8e8e8ff;
+                            border: 1px solid #c1c1c1ff;
+                            padding: 12px;
+                            margin-top: 20px;
+                            font-size: 11px;
+                            text-align: justify;
+                        }
+                        .notes_section {
+                            background-color: #f8f9fa;
+                            padding: 12px;
+                            margin-top: 15px;
+                            border-left: 4px solid #a0ccaaff;
+                        }
+                    </style>
+
+                    <!-- Dirección de envío y facturación -->
+                    <div class="row">
+                        <t t-if="o.partner_shipping_id and (o.partner_shipping_id != o.partner_id)">
+                            <div class="col-6">
+                                <t t-set="information_block">
+                                    <div groups="account.group_delivery_invoice_address" name="shipping_address_block">
+                                        <strong class="d-block mt-3">Dirección de Envío</strong>
+                                        <div t-field="o.partner_shipping_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                                    </div>
+                                </t>
+                            </div>
+                            <div class="col-6" name="address_not_same_as_shipping">
+                                <t t-set="address">
+                                    <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                                    <div t-if="o.partner_id.vat" id="partner_vat_address_not_same_as_shipping">
+                                        <t t-if="o.company_id.account_fiscal_country_id.vat_label" t-out="o.company_id.account_fiscal_country_id.vat_label" id="inv_tax_id_label"/>
+                                        <t t-else="">RIF</t>: <span t-field="o.partner_id.vat"/>
+                                    </div>
+                                    <div t-if="o.partner_id.phone or o.partner_id.mobile" id="partner_phone_address_not_same_as_shipping">
+                                        Tel: <span t-field="o.partner_id.phone" t-if="o.partner_id.phone"/><span t-if="o.partner_id.phone and o.partner_id.mobile"> / </span><span t-field="o.partner_id.mobile" t-if="o.partner_id.mobile"/>
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
+                        <t t-elif="o.partner_shipping_id and (o.partner_shipping_id == o.partner_id)">
+                            <div class="offset-col-6 col-6" name="address_same_as_shipping">
+                                <t t-set="address">
+                                    <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                                    <div t-if="o.partner_id.vat" id="partner_vat_address_same_as_shipping">
+                                        <t t-if="o.company_id.account_fiscal_country_id.vat_label" t-out="o.company_id.account_fiscal_country_id.vat_label" id="inv_tax_id_label"/>
+                                        <t t-else="">RIF</t>: <span t-field="o.partner_id.vat"/>
+                                    </div>
+                                    <div t-if="o.partner_id.phone or o.partner_id.mobile" id="partner_phone_address_same_as_shipping">
+                                        Tel: <span t-field="o.partner_id.phone" t-if="o.partner_id.phone"/><span t-if="o.partner_id.phone and o.partner_id.mobile"> / </span><span t-field="o.partner_id.mobile" t-if="o.partner_id.mobile"/>
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="offset-col-6 col-6" name="no_shipping">
+                                <t t-set="address">
+                                    <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                                    <div t-if="o.partner_id.vat" id="partner_vat_no_shipping">
+                                        <t t-if="o.company_id.account_fiscal_country_id.vat_label" t-out="o.company_id.account_fiscal_country_id.vat_label" id="inv_tax_id_label"/>
+                                        <t t-else="">RIF</t>: <span t-field="o.partner_id.vat"/>
+                                    </div>
+                                    <div t-if="o.partner_id.phone or o.partner_id.mobile" id="partner_phone_no_shipping">
+                                        Tel: <span t-field="o.partner_id.phone" t-if="o.partner_id.phone"/><span t-if="o.partner_id.phone and o.partner_id.mobile"> / </span><span t-field="o.partner_id.mobile" t-if="o.partner_id.mobile"/>
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
+                    </div>
+
+                    <div class="clearfix invoice_main">
+                        <div class="mb-4">
+                            <!-- Título del documento -->
+                            <t t-set="layout_document_title">
+                                <t t-if="not proforma">
+                                    <span t-if="o.move_type == 'out_invoice' and o.state == 'posted'">
+                                        <t name="invoice_title">PROFORMA</t>
+                                    </span>
+                                    <span t-elif="o.move_type == 'out_invoice' and o.state == 'draft'">
+                                        <t name="draft_invoice_title">PROFORMA Borrador</t>
+                                    </span>
+                                    <span t-elif="o.move_type == 'out_invoice' and o.state == 'cancel'">
+                                        <t name="cancelled_invoice_title">PROFORMA Cancelada</t>
+                                    </span>
+                                    <span t-elif="o.move_type == 'out_refund' and o.state == 'posted'">
+                                        <t name="credit_note_title">Nota de Crédito</t>
+                                    </span>
+                                    <span t-elif="o.move_type == 'out_refund' and o.state == 'draft'">
+                                        <t name="draft_credit_note_title">Nota de Crédito Borrador</t>
+                                    </span>
+                                    <span t-elif="o.move_type == 'out_refund' and o.state == 'cancel'">
+                                        <t name="cancelled_credit_note_title">Nota de Crédito Cancelada</t>
+                                    </span>
+                                </t>
+                                <t t-else="">
+                                    <span t-if="o.move_type == 'out_invoice'">
+                                        <t name="proforma_invoice_title">Proforma</t>
+                                    </span>
+                                    <span t-elif="o.move_type == 'out_refund'">
+                                        <t name="proforma_credit_note_title">Nota de Crédito Proforma</t>
+                                    </span>
+                                </t>
+                                <span t-if="o.name and o.name != '/'" t-field="o.name">INV/2025/0001</span>
+                            </t>
+
+                            <!-- Información del vendedor -->
+                            <div t-if="o.commission_seller_id" class="seller_info" name="seller_information">
+                                <strong>Vendedor:</strong>
+                                <span t-field="o.commission_seller_id.name"/>
+                                <t t-if="o.commission_seller_id.function">
+                                    - <span t-field="o.commission_seller_id.function"/>
+                                </t>
+                            </div>
+
+                            <div class="oe_structure"></div>
+
+                            <!-- Información de fechas y referencias -->
+                            <div
+                                id="informations" class="row mb-4"
+                                t-if="o.invoice_date or (o.invoice_date_due and o.move_type == 'out_invoice' and o.state == 'posted') or o.delivery_date or o.invoice_origin or o.partner_id.ref or o.ref or o.invoice_incoterm_id">
+                                <div class="col" t-if="o.invoice_date" name="invoice_date">
+                                    <t t-if="o.move_type == 'out_invoice'"><strong>Fecha de Factura</strong></t>
+                                    <t t-elif="o.move_type == 'out_refund'"><strong>Fecha de Nota de Crédito</strong></t>
+                                    <t t-else=""><strong>Fecha</strong></t>
+                                    <div t-field="o.invoice_date">2025-11-05</div>
+                                </div>
+                                <div class="col" t-if="o.invoice_date_due and o.move_type == 'out_invoice' and o.state == 'posted'" name="due_date">
+                                    <strong>Fecha de Vencimiento</strong>
+                                    <div t-field="o.invoice_date_due">2025-11-05</div>
+                                </div>
+                                <div class="col" t-if="o.delivery_date" name="delivery_date">
+                                    <strong>Fecha de Entrega</strong>
+                                    <div t-field="o.delivery_date">2025-11-05</div>
+                                </div>
+                                <div class="col" t-if="o.invoice_origin" name="origin">
+                                    <strong>Origen</strong>
+                                    <div t-field="o.invoice_origin">S03031</div>
+                                </div>
+                                <div class="col" t-if="o.partner_id.ref" name="customer_code">
+                                    <strong>Código de Cliente</strong>
+                                    <div t-field="o.partner_id.ref"/>
+                                </div>
+                                <div class="col" t-if="o.ref" name="reference">
+                                    <strong>Referencia</strong>
+                                    <div t-field="o.ref">PCM/2025/00002</div>
+                                </div>
+                            </div>
+
+                            <!-- Tabla de líneas de factura -->
+                            <t t-set="display_discount" t-value="any(l.discount for l in o.invoice_line_ids)"/>
+                            <t t-set="display_taxes" t-value="any(l.tax_ids for l in o.invoice_line_ids)"/>
+                            
+                            <table class="table o_main_table table-borderless mb-0" name="invoice_line_table">
+                                <thead>
+                                    <tr>
+                                        <th name="th_description" class="text-start"><span>Descripción</span></th>
+                                        <th name="th_quantity" class="text-end"><span>Cantidad</span></th>
+                                        <th name="th_priceunit" class="text-end"><span>Precio Unitario</span></th>
+                                        <th name="th_discount" t-if="display_discount" class="text-end">
+                                            <span>Desc.%</span>
+                                        </th>
+                                        <th name="th_taxes" t-if="display_taxes" class="text-end"><span>Impuestos</span></th>
+                                        <th name="th_subtotal" class="text-end">
+                                            <span>Importe</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="invoice_tbody">
+                                    <t t-foreach="o.invoice_line_ids" t-as="line">
+                                        <t t-if="line.display_type == 'product'">
+                                            <tr>
+                                                <td name="account_invoice_line_name">
+                                                    <span t-if="line.name" t-field="line.name" t-options="{'widget': 'text'}"/>
+                                                </td>
+                                                <td name="td_quantity" class="text-end">
+                                                    <span t-field="line.quantity" class="text-nowrap">1.00</span>
+                                                    <span t-field="line.product_uom_id" groups="uom.group_uom">units</span>
+                                                </td>
+                                                <td name="td_price_unit" class="text-end">
+                                                    <span class="text-nowrap" t-field="line.price_unit">0.00</span>
+                                                </td>
+                                                <td name="td_discount" t-if="display_discount" class="text-end">
+                                                    <span class="text-nowrap" t-field="line.discount">0</span>
+                                                </td>
+                                                <t t-set="taxes" t-value="', '.join(tax.tax_label for tax in line.tax_ids if tax.tax_label)"/>
+                                                <td name="td_taxes" t-if="display_taxes" class="text-end">
+                                                    <span t-out="taxes" id="line_tax_ids"/>
+                                                </td>
+                                                <td name="td_subtotal" class="text-end o_price_total">
+                                                    <span class="text-nowrap" t-field="line.price_subtotal">0.00</span>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </t>
+                                </tbody>
+                            </table>
+
+                            <!-- Totales -->
+                            <div class="clearfix">
+                                <div id="total" class="row">
+                                    <div class="col-7"></div>
+                                    <div class="col-5">
+                                        <table class="table table-sm table-borderless">
+                                            <tr class="border-black">
+                                                <td><strong>Subtotal</strong></td>
+                                                <td class="text-end">
+                                                    <span t-field="o.amount_untaxed">0.00</span>
+                                                </td>
+                                            </tr>
+                                            <t t-if="o.amount_tax > 0">
+                                                <tr>
+                                                    <td>Impuestos</td>
+                                                    <td class="text-end">
+                                                        <span t-field="o.amount_tax">0.00</span>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                            <tr class="border-black o_total">
+                                                <td><strong>Total</strong></td>
+                                                <td class="text-end">
+                                                    <span t-field="o.amount_total">0.00</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Notas / Descripción -->
+                            <div t-if="o.narration" class="notes_section" name="narration_section">
+                                <strong>Notas:</strong>
+                                <div t-field="o.narration" class="mt-2"/>
+                            </div>
+
+                            <!-- Pie de página legal -->
+                            <div class="legal_footer" name="legal_footer">
+                                <strong>NOTA IMPORTANTE:</strong><br/>
+                                ESTE DOCUMENTO ES SIN DERECHO A CREDITO FISCAL AL MOMENTO DE LA EMISION DE LA FACTURA FISCAL, CONSIDERE QUE SERA EMITIDA EN UN LAPSO NO MAYOR A 30 DIAS A LA TASA DEL BCV
+                            </div>
+
+                            <!-- Términos de pago -->
+                            <div class="mt-3" t-if="o.invoice_payment_term_id">
+                                <strong>Términos de pago:</strong>
+                                <span t-field="o.invoice_payment_term_id.note"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+
+        <!-- Template de reporte principal -->
+        <template id="report_invoice_almus_enhanced">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-set="lang" t-value="o.partner_id.lang"/>
+                    <t t-call="almus_invoice_reports.report_invoice_document_almus_enhanced" t-lang="lang"/>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>

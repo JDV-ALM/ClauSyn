@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Template completamente personalizado sin heredar -->
+    <template id="report_invoice_document_almus">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="lang" t-value="o.partner_id.lang"/>
+                <t t-call="almus_invoice_reports.almus_invoice_layout" t-lang="lang"/>
+            </t>
+        </t>
+    </template>
+
+    <!-- Layout personalizado de factura -->
+    <template id="almus_invoice_layout">
+        <div class="article" style="font-family: 'DejaVu Sans', Arial, sans-serif;">
+            <style>
+                .page {
+                    padding: 0;
+                    margin: 0;
+                }
+                .header-table {
+                    width: 100%;
+                    margin-bottom: 20px;
+                }
+                .invoice-table th {
+                    background-color: #f0f0f0;
+                    padding: 8px;
+                    border: 1px solid #ddd;
+                }
+                .invoice-table td {
+                    padding: 6px;
+                    border: 1px solid #ddd;
+                }
+                @page {
+                    margin-top: 10mm;
+                    margin-bottom: 10mm;
+                    margin-left: 10mm;
+                    margin-right: 10mm;
+                }
+            </style>
+            
+            <!-- Header con logo y datos de empresa -->
+            <table class="header-table">
+                <tr>
+                    <td style="width: 25%; vertical-align: top; padding: 0;">
+                        <img t-if="o.company_id.logo" 
+                             t-att-src="image_data_uri(o.company_id.logo)" 
+                             style="max-height: 80px; max-width: 150px;" 
+                             alt="Logo"/>
+                    </td>
+                    <td style="width: 75%; text-align: right; vertical-align: top; padding: 0;">
+                        <h3 style="margin: 0; font-weight: bold;">
+                            <t t-esc="o.company_id.name"/>
+                        </h3>
+                        <div style="font-size: 12px; margin-top: 5px;">
+                            <t t-if="o.company_id.street">
+                                <t t-esc="o.company_id.street"/><br/>
+                            </t>
+                            <t t-if="o.company_id.street2">
+                                <t t-esc="o.company_id.street2"/><br/>
+                            </t>
+                            <t t-if="o.company_id.city or o.company_id.zip">
+                                <t t-if="o.company_id.city" t-esc="o.company_id.city"/>
+                                <t t-if="o.company_id.zip"> <t t-esc="o.company_id.zip"/></t><br/>
+                            </t>
+                            <t t-if="o.company_id.state_id or o.company_id.country_id">
+                                <t t-if="o.company_id.state_id" t-esc="o.company_id.state_id.name"/>
+                                <t t-if="o.company_id.country_id">
+                                    <t t-if="o.company_id.state_id">, </t>
+                                    <t t-esc="o.company_id.country_id.name"/>
+                                </t><br/>
+                            </t>
+                            <t t-if="o.company_id.vat">
+                                <strong>RIF:</strong> <t t-esc="o.company_id.vat"/>
+                            </t>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Título PROFORMA -->
+            <div style="text-align: center; margin: 20px 0;">
+                <h2 style="font-weight: bold; margin: 0;">
+                    PROFORMA <t t-esc="o.name or ''"/>
+                </h2>
+            </div>
+
+            <!-- Información del cliente y fechas en dos columnas -->
+            <table style="width: 100%; margin-bottom: 20px;">
+                <tr>
+                    <td style="width: 60%; vertical-align: top; padding-right: 20px;">
+                        <!-- Datos del Cliente -->
+                        <h4 style="margin: 0; font-weight: bold;">
+                            <t t-esc="o.partner_id.name"/>
+                        </h4>
+                        <div style="margin-top: 5px; font-size: 12px;">
+                            <t t-if="o.partner_id.street">
+                                <t t-esc="o.partner_id.street"/><br/>
+                            </t>
+                            <t t-if="o.partner_id.street2">
+                                <t t-esc="o.partner_id.street2"/><br/>
+                            </t>
+                            <t t-if="o.partner_id.city or o.partner_id.zip">
+                                <t t-if="o.partner_id.city" t-esc="o.partner_id.city"/>
+                                <t t-if="o.partner_id.zip"> <t t-esc="o.partner_id.zip"/></t><br/>
+                            </t>
+                            <t t-if="o.partner_id.state_id">
+                                <t t-esc="o.partner_id.state_id.name"/>
+                                <t t-if="o.partner_id.country_id">, <t t-esc="o.partner_id.country_id.name"/></t><br/>
+                            </t>
+                            <t t-if="o.partner_id.vat">
+                                <strong>RIF:</strong> <t t-esc="o.partner_id.vat"/><br/>
+                            </t>
+                            <t t-if="o.partner_id.phone">
+                                <strong>Teléfono:</strong> <t t-esc="o.partner_id.phone"/><br/>
+                            </t>
+                            <t t-if="o.invoice_user_id">
+                                <strong>Vendedor:</strong> <t t-esc="o.invoice_user_id.name"/> 
+                                (<t t-esc="o.invoice_user_id.partner_id.function or 'Vendedor'"/>)<br/>
+                            </t>
+                        </div>
+                    </td>
+                    <td style="width: 40%; vertical-align: top;">
+                        <!-- Tabla de fechas -->
+                        <table style="width: 100%; font-size: 12px;">
+                            <tr>
+                                <th style="padding: 5px; text-align: left;">FECHA</th>
+                                <th style="padding: 5px; text-align: left;">Fecha Vencimiento</th>
+                                <th style="padding: 5px; text-align: left;">Origen</th>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px;">
+                                    <t t-esc="o.invoice_date and o.invoice_date.strftime('%d/%m/%Y') or ''"/>
+                                </td>
+                                <td style="padding: 5px;">
+                                    <t t-esc="o.invoice_date_due and o.invoice_date_due.strftime('%d/%m/%Y') or ''"/>
+                                </td>
+                                <td style="padding: 5px;">
+                                    <t t-esc="o.invoice_origin or ''"/>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Tabla de productos -->
+            <table class="invoice-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Descripción</th>
+                        <th style="text-align: right; width: 100px;">Cantidad</th>
+                        <th style="text-align: right; width: 120px;">Precio Unitario</th>
+                        <th style="text-align: center; width: 100px;">Impuestos</th>
+                        <th style="text-align: right; width: 120px;">Importe</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="o.invoice_line_ids" t-as="line">
+                        <tr>
+                            <td>
+                                <t t-if="line.product_id.default_code">
+                                    [<t t-esc="line.product_id.default_code"/>]
+                                </t>
+                                <t t-esc="line.name"/>
+                            </td>
+                            <td style="text-align: right;">
+                                <t t-esc="'{:,.2f}'.format(line.quantity)"/>
+                            </td>
+                            <td style="text-align: right;">
+                                $ <t t-esc="'{:,.2f}'.format(line.price_unit)"/>
+                            </td>
+                            <td style="text-align: center;">
+                                <t t-if="line.tax_ids">
+                                    <t t-foreach="line.tax_ids" t-as="tax">
+                                        <t t-if="not tax_first">, </t>
+                                        <t t-esc="tax.amount"/>%
+                                    </t>
+                                </t>
+                            </td>
+                            <td style="text-align: right;">
+                                $ <t t-esc="'{:,.2f}'.format(line.price_subtotal)"/>
+                            </td>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+
+            <!-- Términos de pago -->
+            <t t-if="o.invoice_payment_term_id">
+                <p style="margin-top: 15px; font-size: 12px;">
+                    <strong>Términos de pago:</strong> <t t-esc="o.invoice_payment_term_id.name"/>
+                </p>
+            </t>
+
+            <!-- Totales -->
+            <table style="width: 100%; margin-top: 20px;">
+                <tr>
+                    <td style="width: 60%;"></td>
+                    <td style="width: 40%;">
+                        <table style="width: 100%; font-size: 12px;">
+                            <tr>
+                                <td style="text-align: right; padding: 5px;"><strong>Subtotal</strong></td>
+                                <td style="text-align: right; padding: 5px; width: 120px;">
+                                    $ <t t-esc="'{:,.2f}'.format(o.amount_untaxed)"/>
+                                </td>
+                            </tr>
+                            <t t-if="o.amount_tax > 0">
+                                <tr>
+                                    <td style="text-align: right; padding: 5px;"><strong>Impuestos</strong></td>
+                                    <td style="text-align: right; padding: 5px;">
+                                        $ <t t-esc="'{:,.2f}'.format(o.amount_tax)"/>
+                                    </td>
+                                </tr>
+                            </t>
+                            <tr style="border-top: 2px solid #000;">
+                                <td style="text-align: right; padding: 5px;"><strong>Total</strong></td>
+                                <td style="text-align: right; padding: 5px;">
+                                    <strong>$ <t t-esc="'{:,.2f}'.format(o.amount_total)"/></strong>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </template>
+</odoo>

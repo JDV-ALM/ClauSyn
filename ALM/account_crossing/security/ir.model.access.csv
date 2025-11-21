@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_account_crossing_reason_user,account.crossing.reason.user,model_account_crossing_reason,group_account_crossing_user,1,0,0,0
+access_account_crossing_reason_manager,account.crossing.reason.manager,model_account_crossing_reason,group_account_crossing_manager,1,1,1,1
+access_account_crossing_user,account.crossing.user,model_account_crossing,group_account_crossing_user,1,1,1,0
+access_account_crossing_manager,account.crossing.manager,model_account_crossing,group_account_crossing_manager,1,1,1,1
+access_account_crossing_wizard,account.crossing.wizard,model_account_crossing_wizard,group_account_crossing_user,1,1,1,0
+access_account_crossing_reason_account,account.crossing.reason.account,model_account_crossing_reason,account.group_account_invoice,1,0,0,0
+access_account_crossing_account,account.crossing.account,model_account_crossing,account.group_account_invoice,1,0,0,0

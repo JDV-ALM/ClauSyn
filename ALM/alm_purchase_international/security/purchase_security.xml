@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Crear categoría personalizada para el módulo -->
+        <record id="module_category_purchase_international" model="ir.module.category">
+            <field name="name">Compras Internacionales</field>
+            <field name="description">Gestión de compras nacionales e internacionales</field>
+            <field name="sequence">25</field>
+        </record>
+        
+        <!-- Grupo de Seguridad para Compras Internacionales -->
+        <record id="group_purchase_international" model="res.groups">
+            <field name="name">Ver Compras Internacionales</field>
+            <field name="category_id" ref="alm_purchase_international.module_category_purchase_international"/>
+            <field name="implied_ids" eval="[(4, ref('purchase.group_purchase_user'))]"/>
+            <field name="comment">Los usuarios con este permiso pueden ver y gestionar órdenes de compra internacionales.</field>
+        </record>
+        
+        <!-- Regla para usuarios SIN acceso a compras internacionales -->
+        <record id="purchase_order_national_only_rule" model="ir.rule">
+            <field name="name">Compras: Solo Nacionales</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="domain_force">[('is_international', '=', False)]</field>
+            <field name="groups" eval="[(4, ref('purchase.group_purchase_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        
+        <!-- Regla para usuarios CON acceso a compras internacionales -->
+        <record id="purchase_order_all_rule" model="ir.rule">
+            <field name="name">Compras: Todas (Nacionales e Internacionales)</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('alm_purchase_international.group_purchase_international'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        
+    </data>
+    
+    <data>
+        <!-- Asignar grupo internacional a Purchase Manager por defecto -->
+        <record id="purchase_manager_implied_group" model="res.groups">
+            <field name="name" ref="purchase.group_purchase_manager"/>
+            <field name="implied_ids" eval="[(4, ref('alm_purchase_international.group_purchase_international'))]"/>
+        </record>
+    </data>
+    
+</odoo>

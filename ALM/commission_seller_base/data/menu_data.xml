@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menú dentro de Ventas/Configuración -->
+    <menuitem id="menu_commission_sellers"
+              name="Vendedores"
+              parent="sale.menu_sale_config"
+              action="action_commission_seller"
+              sequence="50"
+              groups="commission_seller_base.group_commission_user"/>
+</odoo>
