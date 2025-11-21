@@ -1,1 +1,0 @@
-from . import tesote_sync_wizard
